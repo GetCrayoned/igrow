@@ -434,15 +434,15 @@ def show_admin_editor():
             height=120
         )
 
-# Section 0: Complete Reading Material
+# Section 0: Complete Reading Material (Now LAST page - Summary)
 def section_0_reading():
     content = st.session_state.content
     
     st.markdown(f"""
     <div class="gradient-header">
-        <h1>{content.get('main_title', '')}</h1>
+        <h1>📖 Complete Study Summary</h1>
         <p style="font-size: 1.2rem; margin-top: 0.5rem; opacity: 0.9;">{content.get('study_topic', '')}</p>
-        <p style="font-size: 0.9rem; margin-top: 0.25rem; opacity: 0.75;">{content.get('context', '')}</p>
+        <p style="font-size: 0.9rem; margin-top: 0.25rem; opacity: 0.75;">A complete reference guide for this week's study</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -550,18 +550,30 @@ def section_0_reading():
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Call to action
+    # Thank you message at the end
     st.markdown("<br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button("Ready to make this interactive? Click Next! →", key="start_interactive", use_container_width=True):
-            st.session_state.current_section = 1
-            st.rerun()
+    st.markdown("""
+    <div class="success-box" style="text-align: center;">
+        <h3 style="color: #065F46; margin-bottom: 1rem;">✨ Thank you for completing this study! ✨</h3>
+        <p style="color: #252628; line-height: 1.6;">
+            May God bless you as you apply these truths in your life this week.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
 
-# Section 1: Welcome/Intro
+# Section 1: Welcome/Intro (First Page)
 def section_1_intro():
     content = st.session_state.content
+    
+    # Add title and context first
+    st.markdown(f"""
+    <div class="gradient-header">
+        <h1>{content.get('main_title', '')}</h1>
+        <p style="font-size: 1.2rem; margin-top: 0.5rem; opacity: 0.9;">{content.get('study_topic', '')}</p>
+        <p style="font-size: 0.9rem; margin-top: 0.25rem; opacity: 0.75;">{content.get('context', '')}</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     st.markdown("""
     <div class="gradient-header-blue">
@@ -570,10 +582,11 @@ def section_1_intro():
     </div>
     """, unsafe_allow_html=True)
     
+    # Add ice breaker
     st.markdown(f"""
-    <div class="yellow-box">
-        <h3 style="color: #92400E; margin-bottom: 1rem;">Quick Recap: {content.get('icebreaker_title', '')}</h3>
-        <p style="color: #252628;">
+    <div class="ice-breaker-box">
+        <h3 style="color: #6F6354; margin-bottom: 1rem;">Ice Breaker: {content.get('icebreaker_title', '')}</h3>
+        <p style="color: #252628; line-height: 1.6;">
             {content.get('icebreaker_text', '')}
         </p>
     </div>
@@ -907,14 +920,14 @@ def main():
     if st.session_state.logged_in:
         show_admin_editor()
     
-    # Main content
+    # Main content - Restructured order
     sections = [
-        {"id": "reading", "title": "Complete Reading", "func": section_0_reading},
         {"id": "intro", "title": "Welcome", "func": section_1_intro},
         {"id": "change", "title": "Section 1", "func": section_2_change_of_heart},
         {"id": "responsibility", "title": "Section 2", "func": section_3_shared_responsibility},
         {"id": "mission", "title": "Section 3", "func": section_4_mission_of_mercy},
-        {"id": "action", "title": "Your Action Step", "func": section_5_action_step}
+        {"id": "action", "title": "Your Action Step", "func": section_5_action_step},
+        {"id": "reading", "title": "Complete Summary", "func": section_0_reading}
     ]
     
     # Progress bar
