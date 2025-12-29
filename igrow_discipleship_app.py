@@ -1,17 +1,17 @@
 """
-I-Grow Discipleship Guide - Interactive Streamlit App
-Justice and Mercy in the Conquest (The Book of Joshua)
-Context: Campus and Workplace Small Groups (Philippines)
+I-Grow Discipleship Guide - Interactive Streamlit Template
+This template allows you to update content weekly for Bible Study sessions
+Simply replace the placeholder text in the sidebar to customize each week's material
 """
 
 import streamlit as st
 
 # Page configuration
 st.set_page_config(
-    page_title="I-Grow Discipleship Guide",
+    page_title="I-Grow Discipleship Guide Template",
     page_icon="📖",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # Custom CSS for Lighthouse Tagaytay brand colors
@@ -251,154 +251,206 @@ if 'unlikely_person' not in st.session_state:
 if 'action_commitment' not in st.session_state:
     st.session_state.action_commitment = ''
 
+# SIDEBAR - EDITABLE CONTENT
+with st.sidebar:
+    st.title("📝 Weekly Content Editor")
+    st.markdown("---")
+    st.info("Update this content each week. Your changes will appear in the main guide.")
+    
+    # Main Title and Context
+    st.subheader("Main Title")
+    main_title = st.text_input("Guide Title", value="I-Grow Discipleship Guide", key="main_title")
+    study_topic = st.text_area("Topic/Subtitle", value="Put text here for weekly topic", key="study_topic", height=60)
+    context = st.text_input("Context", value="Context: Campus and Workplace Small Groups (Philippines)", key="context")
+    
+    st.markdown("---")
+    
+    # Ice Breaker
+    st.subheader("Ice Breaker")
+    icebreaker_title = st.text_input("Ice Breaker Title", value="The \"Fairness\" Debate", key="icebreaker_title")
+    icebreaker_text = st.text_area("Ice Breaker Question", value="Put text here for ice breaker question", key="icebreaker_text", height=100)
+    
+    st.markdown("---")
+    
+    # Big Idea
+    st.subheader("The Big Idea")
+    big_idea = st.text_area("Main Message", value="Put text here for the big idea", key="big_idea", height=80)
+    
+    st.markdown("---")
+    
+    # Passage & Key Text
+    st.subheader("Scripture")
+    passage_name = st.text_input("Passage Reference", value="Put text here (e.g., Ezekiel 33)", key="passage_name")
+    key_verse = st.text_area("Key Verse", value="Put text here for the key verse", key="key_verse", height=80)
+    verse_reference = st.text_input("Verse Reference", value="Book Chapter:Verse, Version", key="verse_reference")
+    
+    st.markdown("---")
+    
+    # Section 1
+    st.subheader("Section 1")
+    section1_title = st.text_input("Section 1 Title", value="Put text here", key="section1_title")
+    section1_content = st.text_area("Section 1 Content", value="Put text here for section 1 main content", key="section1_content", height=150)
+    section1_question = st.text_area("Section 1 Discussion Question", value="Put text here for discussion question", key="section1_question", height=80)
+    section1_key_truth = st.text_area("Section 1 Key Truth", value="Put text here for key truth", key="section1_key_truth", height=60)
+    
+    st.markdown("---")
+    
+    # Section 2
+    st.subheader("Section 2")
+    section2_title = st.text_input("Section 2 Title", value="Put text here", key="section2_title")
+    section2_content = st.text_area("Section 2 Content", value="Put text here for section 2 main content", key="section2_content", height=150)
+    section2_question = st.text_area("Section 2 Discussion Question", value="Put text here for discussion question", key="section2_question", height=80)
+    section2_key_truth = st.text_area("Section 2 Key Truth", value="Put text here for key truth", key="section2_key_truth", height=60)
+    
+    st.markdown("---")
+    
+    # Section 3
+    st.subheader("Section 3")
+    section3_title = st.text_input("Section 3 Title", value="Put text here", key="section3_title")
+    section3_content = st.text_area("Section 3 Content", value="Put text here for section 3 main content", key="section3_content", height=150)
+    section3_question = st.text_area("Section 3 Discussion Question", value="Put text here for discussion question", key="section3_question", height=80)
+    section3_key_truth = st.text_area("Section 3 Key Truth", value="Put text here for key truth", key="section3_key_truth", height=60)
+    
+    st.markdown("---")
+    
+    # Key Insight
+    st.subheader("Key Insight")
+    key_insight = st.text_area("Key Insight Content", value="Put text here for key insight", key="key_insight", height=150)
+    
+    st.markdown("---")
+    
+    # Action Step
+    st.subheader("Action Step")
+    action_step = st.text_area("Action Step Challenge", value="Put text here for this week's action step", key="action_step", height=100)
+    
+    st.markdown("---")
+    
+    # Interactive Elements (optional customization)
+    st.subheader("Section 1: Interactive Options")
+    struggles_list = st.text_area(
+        "Personal Struggle Options (one per line)", 
+        value="Felt like a failure\nMade a big mistake\nDrifted from prayer/Bible reading\nHurt someone I care about\nGave in to temptation\nDoubted God's goodness",
+        key="struggles_list",
+        height=120
+    )
+    
+    st.subheader("Section 2: Interactive Options")
+    safespace_list = st.text_area(
+        "Safe Space Ideas (one per line)",
+        value="Listen without interrupting\nNo gossip rule\nShare our own struggles first\nPray for each other regularly\nCheck in during the week\nCelebrate small wins together",
+        key="safespace_list",
+        height=120
+    )
+
 
 # Section 0: Complete Reading Material
 def section_0_reading():
-    st.markdown("""
+    st.markdown(f"""
     <div class="gradient-header">
-        <h1>I-Grow Discipleship Guide</h1>
-        <p style="font-size: 1.2rem; margin-top: 0.5rem; opacity: 0.9;">Justice and Mercy in the Conquest (The Book of Joshua)</p>
-        <p style="font-size: 0.9rem; margin-top: 0.25rem; opacity: 0.75;">Context: Campus and Workplace Small Groups (Philippines)</p>
+        <h1>{st.session_state.main_title}</h1>
+        <p style="font-size: 1.2rem; margin-top: 0.5rem; opacity: 0.9;">{st.session_state.study_topic}</p>
+        <p style="font-size: 0.9rem; margin-top: 0.25rem; opacity: 0.75;">{st.session_state.context}</p>
     </div>
     """, unsafe_allow_html=True)
     
     st.markdown('<div class="scrollable-content">', unsafe_allow_html=True)
     
     # Ice Breaker
-    st.markdown("""
+    st.markdown(f"""
     <div class="ice-breaker-box">
-        <h2 style="color: #6F6354; margin-bottom: 1rem;">Ice Breaker: The "Fairness" Debate</h2>
+        <h2 style="color: #6F6354; margin-bottom: 1rem;">Ice Breaker: {st.session_state.icebreaker_title}</h2>
         <p style="color: #252628; line-height: 1.6;">
-            Think of a time when you were playing a game or working on a group project and someone "cheated" 
-            or didn't do their part but still got the same reward as you. How did that make you feel? 
-            Share your story in one minute or less.
+            {st.session_state.icebreaker_text}
         </p>
     </div>
     """, unsafe_allow_html=True)
     
     # Big Idea
-    st.markdown("""
+    st.markdown(f"""
     <div class="big-idea-box">
         <h2 style="color: #6F6354; margin-bottom: 1rem;">The Big Idea</h2>
         <p style="color: #252628; font-weight: 600; line-height: 1.6;">
-            God's heart is always for restoration, and His judgments are not about anger, 
-            but about protecting life and providing a way back for everyone.
+            {st.session_state.big_idea}
         </p>
     </div>
     """, unsafe_allow_html=True)
     
     # Passage & Key Text
-    st.markdown("""
+    st.markdown(f"""
     <div class="passage-box">
         <h2 style="color: #6F6354; margin-bottom: 1rem;">Passage & Key Text</h2>
-        <p style="color: #252628; font-weight: 600; margin-bottom: 1rem;">Passage: Ezekiel 33</p>
+        <p style="color: #252628; font-weight: 600; margin-bottom: 1rem;">Passage: {st.session_state.passage_name}</p>
         <p style="color: #252628; font-style: italic; line-height: 1.6;">
-            "As I live, says the Lord God, I have no pleasure in the death of the wicked, 
-            but that the wicked turn from his way and live" (Ezekiel 33:11, ESV).
+            "{st.session_state.key_verse}"
         </p>
+        <p style="color: #6B7280; font-size: 0.9rem; margin-top: 0.5rem;">({st.session_state.verse_reference})</p>
     </div>
     """, unsafe_allow_html=True)
     
     # Section 1
-    st.markdown("""
+    st.markdown(f"""
     <div class="section-1">
-        <h2 style="color: #6F6354; margin-bottom: 1rem;">Section 1: A Change of Heart</h2>
+        <h2 style="color: #6F6354; margin-bottom: 1rem;">Section 1: {st.session_state.section1_title}</h2>
         <p style="color: #252628; line-height: 1.6; margin-bottom: 1rem;">
-            God is often misunderstood as a strict judge waiting for us to mess up. However, 
-            Ezekiel 33:11 shows us a God who actually feels "agony" when people choose a path 
-            that leads to destruction. He is like a parent watching a child make a dangerous mistake, 
-            pleading for them to "turn back" before they get hurt. This means that my past mistakes 
-            do not define my future if I am willing to change direction today. When we turn to Him, 
-            His mercy overrides the consequences we originally deserved. This truth changes how I view 
-            my own failures because I realize God is cheering for my recovery rather than waiting for 
-            my punishment.
+            {st.session_state.section1_content}
         </p>
         <div class="discussion-box">
             <p style="color: #6F6354; font-weight: 600; margin-bottom: 0.5rem;">Discussion Question:</p>
             <p style="color: #252628; font-style: italic;">
-                Sa mga moments na feeling mo "fail" ka or lumayo ka kay Lord, how does knowing 
-                He takes "no pleasure" in your struggle change your perspective? (Does this make 
-                it easier for you to come back to Him?)
+                {st.session_state.section1_question}
             </p>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
     # Section 2
-    st.markdown("""
+    st.markdown(f"""
     <div class="section-2">
-        <h2 style="color: #6F6354; margin-bottom: 1rem;">Section 2: Our Shared Responsibility</h2>
+        <h2 style="color: #6F6354; margin-bottom: 1rem;">Section 2: {st.session_state.section2_title}</h2>
         <p style="color: #252628; line-height: 1.6; margin-bottom: 1rem;">
-            In our communities, we often find it easy to judge others while excusing ourselves. 
-            Ezekiel reminds us that God is impartial, meaning He holds everyone to the same standard 
-            of love and justice. As a group, we are called to be like "watchmen" who look out for 
-            one another's spiritual well-being. This is not about being "judgy," but about caring 
-            enough to speak up when we see a friend heading toward a "dead end." Our relationships 
-            grow deeper when we create a space where it is safe to admit we are wrong and encourage 
-            each other to stay on the right path. We represent God's fairness by being consistent 
-            in how we treat people, regardless of their background or status.
+            {st.session_state.section2_content}
         </p>
         <div class="discussion-box">
             <p style="color: #6F6354; font-weight: 600; margin-bottom: 0.5rem;">Discussion Question:</p>
             <p style="color: #252628; font-style: italic;">
-                How can we make our group a "safe space" where it's okay to admit mistakes without 
-                feeling judged by others? (Ano yung isang thing na pwede nating gawin para mas 
-                maging supportive sa isa't isa?)
+                {st.session_state.section2_question}
             </p>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
     # Section 3
-    st.markdown("""
+    st.markdown(f"""
     <div class="section-3">
-        <h2 style="color: #6F6354; margin-bottom: 1rem;">Section 3: A Mission of Mercy</h2>
+        <h2 style="color: #6F6354; margin-bottom: 1rem;">Section 3: {st.session_state.section3_title}</h2>
         <p style="color: #252628; line-height: 1.6; margin-bottom: 1rem;">
-            The story of the conquest in Joshua and the warnings in Ezekiel show that God intervenes 
-            only when evil begins to destroy everything good. Our mission today is to share the 
-            "Good News" that there is always a way out of toxic cycles and harmful lifestyles. 
-            Just as Rahab found safety in the middle of a city facing judgment, God is looking for 
-            "outsiders" to bring into His family. We are sent to our campuses and offices not to 
-            condemn people, but to offer them the same mercy we have received. When we live out 
-            this mission, we show the world that God's ultimate goal is not to "win a war," but 
-            to save as many people as possible.
+            {st.session_state.section3_content}
         </p>
         <div class="discussion-box">
             <p style="color: #6F6354; font-weight: 600; margin-bottom: 0.5rem;">Discussion Question:</p>
             <p style="color: #252628; font-style: italic;">
-                Sino yung "unlikely person" sa workplace or school mo na feeling mo kailangan ng 
-                encouragement or mercy ngayon? (How can you show them God's kindness this week 
-                without sounding like you are lecturing them?)
+                {st.session_state.section3_question}
             </p>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
     # Key Insight
-    st.markdown("""
+    st.markdown(f"""
     <div class="gradient-insight">
         <h2 style="margin-bottom: 1rem;">Key Insight</h2>
         <p style="line-height: 1.6;">
-            It is easy to look at the stories of judgment in the Bible and feel afraid or confused. 
-            But when we look closer at Ezekiel 33, we see a God who is actually "longsuffering" 
-            and incredibly patient. He waits until the very last second, hoping that just one more 
-            person will turn around and live. He does not want anyone to perish, and that includes 
-            you, your "difficult" boss, or your struggling classmate. This reveals that God is both 
-            perfectly just and incredibly kind at the same time. You can trust Him with the things 
-            you don't understand because His heart is always moved by love.
+            {st.session_state.key_insight}
         </p>
     </div>
     """, unsafe_allow_html=True)
     
     # Action Step
-    st.markdown("""
+    st.markdown(f"""
     <div class="ice-breaker-box">
         <h2 style="color: #6F6354; margin-bottom: 1rem;">Action Step</h2>
         <p style="color: #252628; line-height: 1.6;">
-            Identify one person this week who seems to be "struggling with the consequences" of 
-            a bad choice. Instead of joining in the gossip or judging them, offer them a genuine 
-            word of encouragement or a small act of kindness to remind them that there is always 
-            a path back to hope.
+            {st.session_state.action_step}
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -419,43 +471,36 @@ def section_1_intro():
     st.markdown("""
     <div class="gradient-header-blue">
         <h2 style="font-size: 2rem; margin-bottom: 0.5rem;">Welcome to Your Interactive Journey</h2>
-        <p style="font-size: 1.1rem; opacity: 0.9;">Let's explore God's heart for justice and mercy together</p>
+        <p style="font-size: 1.1rem; opacity: 0.9;">Let's explore together</p>
     </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("""
+    st.markdown(f"""
     <div class="yellow-box">
-        <h3 style="color: #92400E; margin-bottom: 1rem;">Quick Recap: The Fairness Debate</h3>
+        <h3 style="color: #92400E; margin-bottom: 1rem;">Quick Recap: {st.session_state.icebreaker_title}</h3>
         <p style="color: #252628;">
-            We all know the frustration of unfairness - when someone doesn't pull their weight 
-            but gets the same reward. That feeling of injustice? It's actually a glimpse into 
-            God's character. He cares deeply about fairness AND mercy.
+            {st.session_state.icebreaker_text}
         </p>
     </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("""
+    st.markdown(f"""
     <div class="blue-box">
         <h3 style="color: #1E40AF; margin-bottom: 1rem;">The Big Idea</h3>
         <p style="color: #252628; font-size: 1.1rem; line-height: 1.6;">
-            God's heart is always for <span style="background-color: #FEF3C7; color: #92400E; font-weight: 700; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">restoration</span>, 
-            and His judgments are not about anger, but about 
-            <span style="background-color: #FEF3C7; color: #92400E; font-weight: 700; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">protecting life</span> 
-            and providing a 
-            <span style="background-color: #FEF3C7; color: #92400E; font-weight: 700; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">way back for everyone</span>.
+            {st.session_state.big_idea}
         </p>
     </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("""
+    st.markdown(f"""
     <div class="passage-box" style="border: 2px solid #6B7280;">
         <h3 style="color: #1F2937; margin-bottom: 1rem;">Key Text</h3>
         <p style="color: #252628; font-size: 1.1rem; font-style: italic; line-height: 1.6;">
-            "As I live, says the Lord God, I have no pleasure in the death of the wicked, 
-            but that the wicked turn from his way and live"
+            "{st.session_state.key_verse}"
         </p>
         <p style="color: #6B7280; font-size: 0.9rem; font-weight: 600; margin-top: 0.5rem;">
-            — Ezekiel 33:11, ESV
+            — {st.session_state.verse_reference}
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -463,13 +508,11 @@ def section_1_intro():
 
 # Section 2: A Change of Heart
 def section_2_change_of_heart():
-    st.markdown("""
+    st.markdown(f"""
     <div class="blue-box">
-        <h3 style="color: #1E40AF; font-size: 1.5rem; margin-bottom: 1rem;">Section 1: A Change of Heart</h3>
+        <h3 style="color: #1E40AF; font-size: 1.5rem; margin-bottom: 1rem;">Section 1: {st.session_state.section1_title}</h3>
         <p style="color: #252628; line-height: 1.6;">
-            God isn't a strict judge waiting for you to mess up. He feels <strong>agony</strong> 
-            when you choose a destructive path - like a parent watching their child make a dangerous 
-            mistake. Your past doesn't define your future if you're willing to turn around today.
+            {st.session_state.section1_content}
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -481,14 +524,8 @@ def section_2_change_of_heart():
     </div>
     """, unsafe_allow_html=True)
     
-    struggles = [
-        'Felt like a failure',
-        'Made a big mistake',
-        'Drifted from prayer/Bible reading',
-        'Hurt someone I care about',
-        'Gave in to temptation',
-        'Doubted God\'s goodness'
-    ]
+    # Parse struggles from sidebar input
+    struggles = [s.strip() for s in st.session_state.struggles_list.split('\n') if s.strip()]
     
     # Create columns for selection
     col1, col2 = st.columns(2)
@@ -511,30 +548,28 @@ def section_2_change_of_heart():
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    st.markdown("""
+    st.markdown(f"""
     <div class="discussion-box" style="border-left: 4px solid #8B7B9E;">
         <h4 style="color: #6F6354; font-size: 1.1rem; margin-bottom: 1rem;">Reflect & Respond</h4>
         <p style="color: #252628; font-style: italic; margin-bottom: 1rem;">
-            Sa mga moments na feeling mo "fail" ka or lumayo ka kay Lord, how does knowing 
-            He takes "no pleasure" in your struggle change your perspective?
+            {st.session_state.section1_question}
         </p>
     </div>
     """, unsafe_allow_html=True)
     
     reflection = st.text_area(
-        "Type your thoughts here... (Does this make it easier for you to come back to Him?)",
+        "Type your thoughts here...",
         value=st.session_state.reflections.get('section1', ''),
         key="reflection_section1",
         height=120
     )
     st.session_state.reflections['section1'] = reflection
     
-    st.markdown("""
+    st.markdown(f"""
     <div class="proof-box">
         <p style="color: #6F6354; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">KEY TRUTH:</p>
         <p style="color: #252628; font-style: italic;">
-            God is cheering for your recovery, not waiting for your punishment. Your past mistakes 
-            don't define your future when you turn to Him.
+            {st.session_state.section1_key_truth}
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -542,13 +577,11 @@ def section_2_change_of_heart():
 
 # Section 3: Our Shared Responsibility
 def section_3_shared_responsibility():
-    st.markdown("""
+    st.markdown(f"""
     <div class="orange-box">
-        <h3 style="color: #9A3412; font-size: 1.5rem; margin-bottom: 1rem;">Section 2: Our Shared Responsibility</h3>
+        <h3 style="color: #9A3412; font-size: 1.5rem; margin-bottom: 1rem;">Section 2: {st.session_state.section2_title}</h3>
         <p style="color: #252628; line-height: 1.6;">
-            We're called to be "watchmen" for each other - not to judge, but to care enough to 
-            speak up when a friend is heading toward a dead end. This creates deeper relationships 
-            where it's safe to admit we're wrong.
+            {st.session_state.section2_content}
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -560,14 +593,8 @@ def section_3_shared_responsibility():
     </div>
     """, unsafe_allow_html=True)
     
-    quick_ideas = [
-        'Listen without interrupting',
-        'No gossip rule',
-        'Share our own struggles first',
-        'Pray for each other regularly',
-        'Check in during the week',
-        'Celebrate small wins together'
-    ]
+    # Parse safe space ideas from sidebar input
+    quick_ideas = [s.strip() for s in st.session_state.safespace_list.split('\n') if s.strip()]
     
     # Create columns for selection
     col1, col2 = st.columns(2)
@@ -590,11 +617,11 @@ def section_3_shared_responsibility():
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    st.markdown("""
+    st.markdown(f"""
     <div class="discussion-box" style="border-left: 4px solid #8B7B9E;">
         <h4 style="color: #6F6354; font-size: 1.1rem; margin-bottom: 1rem;">Reflect & Respond</h4>
         <p style="color: #252628; font-style: italic; margin-bottom: 1rem;">
-            Ano yung isang thing na pwede nating gawin para mas maging supportive sa isa't isa?
+            {st.session_state.section2_question}
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -607,12 +634,11 @@ def section_3_shared_responsibility():
     )
     st.session_state.reflections['section2'] = reflection
     
-    st.markdown("""
+    st.markdown(f"""
     <div class="proof-box" style="border-left: 4px solid #8A877E;">
         <p style="color: #6F6354; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">KEY TRUTH:</p>
         <p style="color: #252628; font-style: italic;">
-            True community happens when we're consistent in how we treat everyone, creating space 
-            where it's safe to admit mistakes and grow together.
+            {st.session_state.section2_key_truth}
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -620,13 +646,11 @@ def section_3_shared_responsibility():
 
 # Section 4: A Mission of Mercy
 def section_4_mission_of_mercy():
-    st.markdown("""
+    st.markdown(f"""
     <div class="green-box">
-        <h3 style="color: #065F46; font-size: 1.5rem; margin-bottom: 1rem;">Section 3: A Mission of Mercy</h3>
+        <h3 style="color: #065F46; font-size: 1.5rem; margin-bottom: 1rem;">Section 3: {st.session_state.section3_title}</h3>
         <p style="color: #252628; line-height: 1.6;">
-            Just like Rahab found safety in the middle of judgment, God is looking for "outsiders" 
-            to bring into His family. We're sent to our campuses and offices not to condemn, but 
-            to offer the same mercy we've received.
+            {st.session_state.section3_content}
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -651,11 +675,11 @@ def section_4_mission_of_mercy():
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    st.markdown("""
+    st.markdown(f"""
     <div class="discussion-box" style="border-left: 4px solid #8B7B9E;">
         <h4 style="color: #6F6354; font-size: 1.1rem; margin-bottom: 1rem;">Reflect & Respond</h4>
         <p style="color: #252628; font-style: italic; margin-bottom: 1rem;">
-            How can you show them God's kindness this week without sounding like you are lecturing them?
+            {st.session_state.section3_question}
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -668,12 +692,11 @@ def section_4_mission_of_mercy():
     )
     st.session_state.reflections['section3'] = reflection
     
-    st.markdown("""
+    st.markdown(f"""
     <div class="proof-box" style="border-left: 4px solid #7A9B76;">
         <p style="color: #6F6354; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">KEY TRUTH:</p>
         <p style="color: #252628; font-style: italic;">
-            God's ultimate goal isn't to "win a war" but to save as many people as possible. 
-            When we show mercy, we reveal His true heart.
+            {st.session_state.section3_key_truth}
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -681,25 +704,20 @@ def section_4_mission_of_mercy():
 
 # Section 5: Action Step
 def section_5_action_step():
-    st.markdown("""
+    st.markdown(f"""
     <div class="gradient-header-green">
         <h3 style="font-size: 1.8rem; margin-bottom: 1rem;">Key Insight</h3>
         <p style="font-size: 1.1rem; line-height: 1.6;">
-            God is "longsuffering" and incredibly patient. He waits until the very last second, 
-            hoping just one more person will turn around and live. He doesn't want anyone to perish - 
-            including you, your difficult boss, or your struggling classmate. You can trust Him 
-            because His heart is always moved by love.
+            {st.session_state.key_insight}
         </p>
     </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("""
+    st.markdown(f"""
     <div class="yellow-box">
         <h4 style="color: #92400E; font-size: 1.5rem; margin-bottom: 1rem;">This Week's Challenge</h4>
         <p style="color: #252628; font-size: 1.1rem; line-height: 1.6; margin-bottom: 1rem;">
-            Identify one person who seems to be "struggling with the consequences" of a bad choice. 
-            Instead of joining the gossip or judging them, offer a genuine word of encouragement 
-            or small act of kindness.
+            {st.session_state.action_step}
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -764,9 +782,9 @@ def main():
     sections = [
         {"id": "reading", "title": "Complete Reading", "func": section_0_reading},
         {"id": "intro", "title": "Welcome", "func": section_1_intro},
-        {"id": "change", "title": "A Change of Heart", "func": section_2_change_of_heart},
-        {"id": "responsibility", "title": "Our Shared Responsibility", "func": section_3_shared_responsibility},
-        {"id": "mission", "title": "A Mission of Mercy", "func": section_4_mission_of_mercy},
+        {"id": "change", "title": "Section 1", "func": section_2_change_of_heart},
+        {"id": "responsibility", "title": "Section 2", "func": section_3_shared_responsibility},
+        {"id": "mission", "title": "Section 3", "func": section_4_mission_of_mercy},
         {"id": "action", "title": "Your Action Step", "func": section_5_action_step}
     ]
     
