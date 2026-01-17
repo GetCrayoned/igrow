@@ -675,9 +675,9 @@ def section_2_change_of_heart():
     </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("""
+    st.markdown(f"""
     <div class="yellow-box">
-        <h4 style="color: #92400E; font-size: 1.2rem; margin-bottom: 1rem;">When have you felt distant from God?</h4>
+        <h4 style="color: #92400E; font-size: 1.2rem; margin-bottom: 1rem;">{content.get('section1_interactive_question', 'When have you felt distant from God?')}</h4>
         <p style="color: #252628; margin-bottom: 1rem;">Select all that apply (or add your own):</p>
     </div>
     """, unsafe_allow_html=True)
@@ -746,9 +746,9 @@ def section_3_shared_responsibility():
     </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("""
+    st.markdown(f"""
     <div class="green-box">
-        <h4 style="color: #065F46; font-size: 1.2rem; margin-bottom: 1rem;">How can we create a "safe space"?</h4>
+        <h4 style="color: #065F46; font-size: 1.2rem; margin-bottom: 1rem;">{content.get('section2_interactive_question', 'How can we create a "safe space"?')}</h4>
         <p style="color: #252628; margin-bottom: 1rem;">Choose ideas that resonate with you:</p>
     </div>
     """, unsafe_allow_html=True)
@@ -817,9 +817,9 @@ def section_4_mission_of_mercy():
     </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("""
+    st.markdown(f"""
     <div class="yellow-box">
-        <h4 style="color: #92400E; font-size: 1.2rem; margin-bottom: 1rem;">Who needs mercy in your circle?</h4>
+        <h4 style="color: #92400E; font-size: 1.2rem; margin-bottom: 1rem;">{content.get('section3_interactive_question', 'Who needs mercy in your circle?')}</h4>
         <p style="color: #252628; margin-bottom: 1rem;">
             Think of that "unlikely person" - someone others might write off, but who needs 
             encouragement right now.
