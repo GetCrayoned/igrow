@@ -820,131 +820,147 @@ def section_2_change_of_heart():
 def section_3_shared_responsibility():
     content = st.session_state.content
     
-    st.markdown(f"""
-    <div class="orange-box">
-        <h3 style="color: #9A3412; font-size: 1.5rem; margin-bottom: 1rem;">Section 2: {content.get('section2_title', '')}</h3>
-        <p style="color: #252628; line-height: 1.6;">
-            {content.get('section2_content', '')}
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Content
+    if content.get("section2_show_content", True):
+        st.markdown(f"""
+        <div class="orange-box">
+            <h3 style="color: #9A3412; font-size: 1.5rem; margin-bottom: 1rem;">Section 2: {content.get('section2_title', '')}</h3>
+            <p style="color: #252628; line-height: 1.6;">
+                {content.get('section2_content', '')}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
     
-    st.markdown(f"""
-    <div class="green-box">
-        <h4 style="color: #065F46; font-size: 1.2rem; margin-bottom: 1rem;">{content.get('section2_interactive_question', 'How can we create a "safe space"?')}</h4>
-        <p style="color: #252628; margin-bottom: 1rem;">Choose ideas that resonate with you:</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Interactive selector
+    if content.get("section2_show_interactive", True):
+        st.markdown(f"""
+        <div class="green-box">
+            <h4 style="color: #065F46; font-size: 1.2rem; margin-bottom: 1rem;">{content.get('section2_interactive_question', 'How can we create a "safe space"?')}</h4>
+            <p style="color: #252628; margin-bottom: 1rem;">Choose ideas that resonate with you:</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Parse safe space ideas from content
+        quick_ideas = [s.strip() for s in content.get('safespace_list', '').split('\n') if s.strip()]
+        
+        # Create columns for selection
+        col1, col2 = st.columns(2)
+        
+        for idx, idea in enumerate(quick_ideas):
+            with col1 if idx % 2 == 0 else col2:
+                is_selected = idea in st.session_state.safe_space_ideas
+                
+                if st.button(
+                    f"{'✓ ' if is_selected else ''}{idea}",
+                    key=f"idea_{idx}",
+                    use_container_width=True,
+                    type="primary" if is_selected else "secondary"
+                ):
+                    if is_selected:
+                        st.session_state.safe_space_ideas.remove(idea)
+                    else:
+                        st.session_state.safe_space_ideas.append(idea)
+                    st.rerun()
+        
+        st.markdown("<br>", unsafe_allow_html=True)
     
-    # Parse safe space ideas from content
-    quick_ideas = [s.strip() for s in content.get('safespace_list', '').split('\n') if s.strip()]
+    # Discussion question
+    if content.get("section2_show_question", True):
+        st.markdown(f"""
+        <div class="discussion-box" style="border-left: 4px solid #8B7B9E;">
+            <h4 style="color: #6F6354; font-size: 1.1rem; margin-bottom: 1rem;">Reflect & Respond</h4>
+            <p style="color: #252628; font-style: italic; margin-bottom: 1rem;">
+                {content.get('section2_question', '')}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        reflection = st.text_area(
+            "Share one specific action your group can take...",
+            value=st.session_state.reflections.get('section2', ''),
+            key="reflection_section2",
+            height=120
+        )
+        st.session_state.reflections['section2'] = reflection
     
-    # Create columns for selection
-    col1, col2 = st.columns(2)
-    
-    for idx, idea in enumerate(quick_ideas):
-        with col1 if idx % 2 == 0 else col2:
-            is_selected = idea in st.session_state.safe_space_ideas
-            
-            if st.button(
-                f"{'✓ ' if is_selected else ''}{idea}",
-                key=f"idea_{idx}",
-                use_container_width=True,
-                type="primary" if is_selected else "secondary"
-            ):
-                if is_selected:
-                    st.session_state.safe_space_ideas.remove(idea)
-                else:
-                    st.session_state.safe_space_ideas.append(idea)
-                st.rerun()
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    st.markdown(f"""
-    <div class="discussion-box" style="border-left: 4px solid #8B7B9E;">
-        <h4 style="color: #6F6354; font-size: 1.1rem; margin-bottom: 1rem;">Reflect & Respond</h4>
-        <p style="color: #252628; font-style: italic; margin-bottom: 1rem;">
-            {content.get('section2_question', '')}
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    reflection = st.text_area(
-        "Share one specific action your group can take...",
-        value=st.session_state.reflections.get('section2', ''),
-        key="reflection_section2",
-        height=120
-    )
-    st.session_state.reflections['section2'] = reflection
-    
-    st.markdown(f"""
-    <div class="proof-box" style="border-left: 4px solid #8A877E;">
-        <p style="color: #6F6354; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">KEY TRUTH:</p>
-        <p style="color: #252628; font-style: italic;">
-            {content.get('section2_key_truth', '')}
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Key truth
+    if content.get("section2_show_key_truth", True):
+        st.markdown(f"""
+        <div class="proof-box" style="border-left: 4px solid #8A877E;">
+            <p style="color: #6F6354; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">KEY TRUTH:</p>
+            <p style="color: #252628; font-style: italic;">
+                {content.get('section2_key_truth', '')}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # Section 4: A Mission of Mercy
 def section_4_mission_of_mercy():
     content = st.session_state.content
     
-    st.markdown(f"""
-    <div class="green-box">
-        <h3 style="color: #065F46; font-size: 1.5rem; margin-bottom: 1rem;">Section 3: {content.get('section3_title', '')}</h3>
-        <p style="color: #252628; line-height: 1.6;">
-            {content.get('section3_content', '')}
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Content
+    if content.get("section3_show_content", True):
+        st.markdown(f"""
+        <div class="green-box">
+            <h3 style="color: #065F46; font-size: 1.5rem; margin-bottom: 1rem;">Section 3: {content.get('section3_title', '')}</h3>
+            <p style="color: #252628; line-height: 1.6;">
+                {content.get('section3_content', '')}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
     
-    st.markdown(f"""
-    <div class="yellow-box">
-        <h4 style="color: #92400E; font-size: 1.2rem; margin-bottom: 1rem;">{content.get('section3_interactive_question', 'Who needs mercy in your circle?')}</h4>
-        <p style="color: #252628; margin-bottom: 1rem;">
-            Think of that "unlikely person" - someone others might write off, but who needs 
-            encouragement right now.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Interactive input
+    if content.get("section3_show_interactive", True):
+        st.markdown(f"""
+        <div class="yellow-box">
+            <h4 style="color: #92400E; font-size: 1.2rem; margin-bottom: 1rem;">{content.get('section3_interactive_question', 'Who needs mercy in your circle?')}</h4>
+            <p style="color: #252628; margin-bottom: 1rem;">
+                Think of that "unlikely person" - someone others might write off, but who needs 
+                encouragement right now.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        unlikely_person = st.text_input(
+            "Their name or description",
+            value=st.session_state.unlikely_person,
+            placeholder="e.g., 'my difficult coworker' or 'the classmate everyone avoids'",
+            key="unlikely_person_input"
+        )
+        st.session_state.unlikely_person = unlikely_person
+        
+        st.markdown("<br>", unsafe_allow_html=True)
     
-    unlikely_person = st.text_input(
-        "Their name or description",
-        value=st.session_state.unlikely_person,
-        placeholder="e.g., 'my difficult coworker' or 'the classmate everyone avoids'",
-        key="unlikely_person_input"
-    )
-    st.session_state.unlikely_person = unlikely_person
+    # Discussion question
+    if content.get("section3_show_question", True):
+        st.markdown(f"""
+        <div class="discussion-box" style="border-left: 4px solid #8B7B9E;">
+            <h4 style="color: #6F6354; font-size: 1.1rem; margin-bottom: 1rem;">Reflect & Respond</h4>
+            <p style="color: #252628; font-style: italic; margin-bottom: 1rem;">
+                {content.get('section3_question', '')}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        reflection = st.text_area(
+            "Be specific: What will you say or do? When will you do it?",
+            value=st.session_state.reflections.get('section3', ''),
+            key="reflection_section3",
+            height=120
+        )
+        st.session_state.reflections['section3'] = reflection
     
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    st.markdown(f"""
-    <div class="discussion-box" style="border-left: 4px solid #8B7B9E;">
-        <h4 style="color: #6F6354; font-size: 1.1rem; margin-bottom: 1rem;">Reflect & Respond</h4>
-        <p style="color: #252628; font-style: italic; margin-bottom: 1rem;">
-            {content.get('section3_question', '')}
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    reflection = st.text_area(
-        "Be specific: What will you say or do? When will you do it?",
-        value=st.session_state.reflections.get('section3', ''),
-        key="reflection_section3",
-        height=120
-    )
-    st.session_state.reflections['section3'] = reflection
-    
-    st.markdown(f"""
-    <div class="proof-box" style="border-left: 4px solid #7A9B76;">
-        <p style="color: #6F6354; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">KEY TRUTH:</p>
-        <p style="color: #252628; font-style: italic;">
-            {content.get('section3_key_truth', '')}
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Key truth
+    if content.get("section3_show_key_truth", True):
+        st.markdown(f"""
+        <div class="proof-box" style="border-left: 4px solid #7A9B76;">
+            <p style="color: #6F6354; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">KEY TRUTH:</p>
+            <p style="color: #252628; font-style: italic;">
+                {content.get('section3_key_truth', '')}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # Section 5: Action Step
