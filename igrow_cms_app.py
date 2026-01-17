@@ -269,18 +269,30 @@ def load_content():
             "section1_key_truth": "God is cheering for your recovery, not waiting for your punishment. Your past mistakes don't define your future when you turn to Him.",
             "section1_interactive_question": "When have you felt distant from God?",
             "section1_enable_struggles_selector": True,
+            "section1_show_content": True,
+            "section1_show_question": True,
+            "section1_show_key_truth": True,
+            "section1_show_interactive": True,
             "section2_title": "Our Shared Responsibility",
             "section2_content": "In our communities, we often find it easy to judge others while excusing ourselves. Ezekiel reminds us that God is impartial, meaning He holds everyone to the same standard of love and justice. As a group, we are called to be like \"watchmen\" who look out for one another's spiritual well-being. This is not about being \"judgy,\" but about caring enough to speak up when we see a friend heading toward a \"dead end.\" Our relationships grow deeper when we create a space where it is safe to admit we are wrong and encourage each other to stay on the right path. We represent God's fairness by being consistent in how we treat people, regardless of their background or status.",
             "section2_question": "How can we make our group a \"safe space\" where it's okay to admit mistakes without feeling judged by others? (Ano yung isang thing na pwede nating gawin para mas maging supportive sa isa't isa?)",
             "section2_key_truth": "True community happens when we're consistent in how we treat everyone, creating space where it's safe to admit mistakes and grow together.",
             "section2_interactive_question": "How can we create a 'safe space'?",
             "section2_enable_safespace_selector": True,
+            "section2_show_content": True,
+            "section2_show_question": True,
+            "section2_show_key_truth": True,
+            "section2_show_interactive": True,
             "section3_title": "A Mission of Mercy",
             "section3_content": "The story of the conquest in Joshua and the warnings in Ezekiel show that God intervenes only when evil begins to destroy everything good. Our mission today is to share the \"Good News\" that there is always a way out of toxic cycles and harmful lifestyles. Just as Rahab found safety in the middle of a city facing judgment, God is looking for \"outsiders\" to bring into His family. We are sent to our campuses and offices not to condemn people, but to offer them the same mercy we have received. When we live out this mission, we show the world that God's ultimate goal is not to \"win a war,\" but to save as many people as possible.",
             "section3_question": "Sino yung \"unlikely person\" sa workplace or school mo na feeling mo kailangan ng encouragement or mercy ngayon? (How can you show them God's kindness this week without sounding like you are lecturing them?)",
             "section3_key_truth": "God's ultimate goal isn't to \"win a war\" but to save as many people as possible. When we show mercy, we reveal His true heart.",
             "section3_interactive_question": "Who needs mercy in your circle?",
             "section3_enable_person_input": True,
+            "section3_show_content": True,
+            "section3_show_question": True,
+            "section3_show_key_truth": True,
+            "section3_show_interactive": True,
             "key_insight": "It is easy to look at the stories of judgment in the Bible and feel afraid or confused. But when we look closer at Ezekiel 33, we see a God who is actually \"longsuffering\" and incredibly patient. He waits until the very last second, hoping that just one more person will turn around and live. He does not want anyone to perish, and that includes you, your \"difficult\" boss, or your struggling classmate. This reveals that God is both perfectly just and incredibly kind at the same time. You can trust Him with the things you don't understand because His heart is always moved by love.",
             "action_step": "Identify one person this week who seems to be \"struggling with the consequences\" of a bad choice. Instead of joining in the gossip or judging them, offer them a genuine word of encouragement or a small act of kindness to remind them that there is always a path back to hope.",
             "struggles_list": "Felt like a failure\nMade a big mistake\nDrifted from prayer/Bible reading\nHurt someone I care about\nGave in to temptation\nDoubted God's goodness",
@@ -412,6 +424,17 @@ def show_admin_editor():
         st.subheader("Section 1")
         if st.session_state.content.get("enable_section1", True):
             st.session_state.content["section1_title"] = st.text_input("Section 1 Title", value=st.session_state.content.get("section1_title", ""), key="section1_title")
+            
+            # Granular toggles for what to show
+            st.caption("Show/Hide Elements:")
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.session_state.content["section1_show_content"] = st.checkbox("Show Content", value=st.session_state.content.get("section1_show_content", True), key="s1_show_content")
+                st.session_state.content["section1_show_question"] = st.checkbox("Show Question", value=st.session_state.content.get("section1_show_question", True), key="s1_show_question")
+            with col_b:
+                st.session_state.content["section1_show_key_truth"] = st.checkbox("Show Key Truth", value=st.session_state.content.get("section1_show_key_truth", True), key="s1_show_truth")
+                st.session_state.content["section1_show_interactive"] = st.checkbox("Show Interactive", value=st.session_state.content.get("section1_show_interactive", True), key="s1_show_interactive")
+            
             st.session_state.content["section1_content"] = st.text_area("Section 1 Content", value=st.session_state.content.get("section1_content", ""), key="section1_content", height=150)
             st.session_state.content["section1_question"] = st.text_area("Section 1 Discussion Question", value=st.session_state.content.get("section1_question", ""), key="section1_question", height=80)
             st.session_state.content["section1_key_truth"] = st.text_area("Section 1 Key Truth", value=st.session_state.content.get("section1_key_truth", ""), key="section1_key_truth", height=60)
@@ -427,6 +450,17 @@ def show_admin_editor():
         st.subheader("Section 2")
         if st.session_state.content.get("enable_section2", True):
             st.session_state.content["section2_title"] = st.text_input("Section 2 Title", value=st.session_state.content.get("section2_title", ""), key="section2_title")
+            
+            # Granular toggles
+            st.caption("Show/Hide Elements:")
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.session_state.content["section2_show_content"] = st.checkbox("Show Content", value=st.session_state.content.get("section2_show_content", True), key="s2_show_content")
+                st.session_state.content["section2_show_question"] = st.checkbox("Show Question", value=st.session_state.content.get("section2_show_question", True), key="s2_show_question")
+            with col_b:
+                st.session_state.content["section2_show_key_truth"] = st.checkbox("Show Key Truth", value=st.session_state.content.get("section2_show_key_truth", True), key="s2_show_truth")
+                st.session_state.content["section2_show_interactive"] = st.checkbox("Show Interactive", value=st.session_state.content.get("section2_show_interactive", True), key="s2_show_interactive")
+            
             st.session_state.content["section2_content"] = st.text_area("Section 2 Content", value=st.session_state.content.get("section2_content", ""), key="section2_content", height=150)
             st.session_state.content["section2_question"] = st.text_area("Section 2 Discussion Question", value=st.session_state.content.get("section2_question", ""), key="section2_question", height=80)
             st.session_state.content["section2_key_truth"] = st.text_area("Section 2 Key Trust", value=st.session_state.content.get("section2_key_truth", ""), key="section2_key_truth", height=60)
@@ -442,6 +476,17 @@ def show_admin_editor():
         st.subheader("Section 3")
         if st.session_state.content.get("enable_section3", True):
             st.session_state.content["section3_title"] = st.text_input("Section 3 Title", value=st.session_state.content.get("section3_title", ""), key="section3_title")
+            
+            # Granular toggles
+            st.caption("Show/Hide Elements:")
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.session_state.content["section3_show_content"] = st.checkbox("Show Content", value=st.session_state.content.get("section3_show_content", True), key="s3_show_content")
+                st.session_state.content["section3_show_question"] = st.checkbox("Show Question", value=st.session_state.content.get("section3_show_question", True), key="s3_show_question")
+            with col_b:
+                st.session_state.content["section3_show_key_truth"] = st.checkbox("Show Key Truth", value=st.session_state.content.get("section3_show_key_truth", True), key="s3_show_truth")
+                st.session_state.content["section3_show_interactive"] = st.checkbox("Show Interactive", value=st.session_state.content.get("section3_show_interactive", True), key="s3_show_interactive")
+            
             st.session_state.content["section3_content"] = st.text_area("Section 3 Content", value=st.session_state.content.get("section3_content", ""), key="section3_content", height=150)
             st.session_state.content["section3_question"] = st.text_area("Section 3 Discussion Question", value=st.session_state.content.get("section3_question", ""), key="section3_question", height=80)
             st.session_state.content["section3_key_truth"] = st.text_area("Section 3 Key Truth", value=st.session_state.content.get("section3_key_truth", ""), key="section3_key_truth", height=60)
@@ -528,53 +573,83 @@ def section_0_reading():
     </div>
     """, unsafe_allow_html=True)
     
-    # Section 1
-    st.markdown(f"""
-    <div class="section-1">
-        <h2 style="color: #6F6354; margin-bottom: 1rem;">Section 1: {content.get('section1_title', '')}</h2>
-        <p style="color: #252628; line-height: 1.6; margin-bottom: 1rem;">
-            {content.get('section1_content', '')}
-        </p>
-        <div class="discussion-box">
-            <p style="color: #6F6354; font-weight: 600; margin-bottom: 0.5rem;">Discussion Question:</p>
-            <p style="color: #252628; font-style: italic;">
-                {content.get('section1_question', '')}
-            </p>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Section 1 - with granular toggles
+    if content.get("enable_section1", True):
+        st.markdown(f'<div class="section-1"><h2 style="color: #6F6354; margin-bottom: 1rem;">Section 1: {content.get("section1_title", "")}</h2>', unsafe_allow_html=True)
+        
+        # Content paragraph
+        if content.get("section1_show_content", True):
+            st.markdown(f'<p style="color: #252628; line-height: 1.6; margin-bottom: 1rem;">{content.get("section1_content", "")}</p>', unsafe_allow_html=True)
+        
+        # Discussion question
+        if content.get("section1_show_question", True):
+            st.markdown(f"""
+            <div class="discussion-box">
+                <p style="color: #6F6354; font-weight: 600; margin-bottom: 0.5rem;">Discussion Question:</p>
+                <p style="color: #252628; font-style: italic;">{content.get("section1_question", "")}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Key truth
+        if content.get("section1_show_key_truth", True):
+            st.markdown(f"""
+            <div class="proof-box">
+                <p style="color: #6F6354; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">KEY TRUTH:</p>
+                <p style="color: #252628; font-style: italic;">{content.get("section1_key_truth", "")}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
-    # Section 2
-    st.markdown(f"""
-    <div class="section-2">
-        <h2 style="color: #6F6354; margin-bottom: 1rem;">Section 2: {content.get('section2_title', '')}</h2>
-        <p style="color: #252628; line-height: 1.6; margin-bottom: 1rem;">
-            {content.get('section2_content', '')}
-        </p>
-        <div class="discussion-box">
-            <p style="color: #6F6354; font-weight: 600; margin-bottom: 0.5rem;">Discussion Question:</p>
-            <p style="color: #252628; font-style: italic;">
-                {content.get('section2_question', '')}
-            </p>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Section 2 - with granular toggles
+    if content.get("enable_section2", True):
+        st.markdown(f'<div class="section-2"><h2 style="color: #6F6354; margin-bottom: 1rem;">Section 2: {content.get("section2_title", "")}</h2>', unsafe_allow_html=True)
+        
+        if content.get("section2_show_content", True):
+            st.markdown(f'<p style="color: #252628; line-height: 1.6; margin-bottom: 1rem;">{content.get("section2_content", "")}</p>', unsafe_allow_html=True)
+        
+        if content.get("section2_show_question", True):
+            st.markdown(f"""
+            <div class="discussion-box">
+                <p style="color: #6F6354; font-weight: 600; margin-bottom: 0.5rem;">Discussion Question:</p>
+                <p style="color: #252628; font-style: italic;">{content.get("section2_question", "")}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        if content.get("section2_show_key_truth", True):
+            st.markdown(f"""
+            <div class="proof-box">
+                <p style="color: #6F6354; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">KEY TRUTH:</p>
+                <p style="color: #252628; font-style: italic;">{content.get("section2_key_truth", "")}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
-    # Section 3
-    st.markdown(f"""
-    <div class="section-3">
-        <h2 style="color: #6F6354; margin-bottom: 1rem;">Section 3: {content.get('section3_title', '')}</h2>
-        <p style="color: #252628; line-height: 1.6; margin-bottom: 1rem;">
-            {content.get('section3_content', '')}
-        </p>
-        <div class="discussion-box">
-            <p style="color: #6F6354; font-weight: 600; margin-bottom: 0.5rem;">Discussion Question:</p>
-            <p style="color: #252628; font-style: italic;">
-                {content.get('section3_question', '')}
-            </p>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Section 3 - with granular toggles
+    if content.get("enable_section3", True):
+        st.markdown(f'<div class="section-3"><h2 style="color: #6F6354; margin-bottom: 1rem;">Section 3: {content.get("section3_title", "")}</h2>', unsafe_allow_html=True)
+        
+        if content.get("section3_show_content", True):
+            st.markdown(f'<p style="color: #252628; line-height: 1.6; margin-bottom: 1rem;">{content.get("section3_content", "")}</p>', unsafe_allow_html=True)
+        
+        if content.get("section3_show_question", True):
+            st.markdown(f"""
+            <div class="discussion-box">
+                <p style="color: #6F6354; font-weight: 600; margin-bottom: 0.5rem;">Discussion Question:</p>
+                <p style="color: #252628; font-style: italic;">{content.get("section3_question", "")}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        if content.get("section3_show_key_truth", True):
+            st.markdown(f"""
+            <div class="proof-box">
+                <p style="color: #6F6354; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">KEY TRUTH:</p>
+                <p style="color: #252628; font-style: italic;">{content.get("section3_key_truth", "")}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
     # Key Insight
     st.markdown(f"""
@@ -666,71 +741,79 @@ def section_1_intro():
 def section_2_change_of_heart():
     content = st.session_state.content
     
-    st.markdown(f"""
-    <div class="blue-box">
-        <h3 style="color: #1E40AF; font-size: 1.5rem; margin-bottom: 1rem;">Section 1: {content.get('section1_title', '')}</h3>
-        <p style="color: #252628; line-height: 1.6;">
-            {content.get('section1_content', '')}
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Content
+    if content.get("section1_show_content", True):
+        st.markdown(f"""
+        <div class="blue-box">
+            <h3 style="color: #1E40AF; font-size: 1.5rem; margin-bottom: 1rem;">Section 1: {content.get('section1_title', '')}</h3>
+            <p style="color: #252628; line-height: 1.6;">
+                {content.get('section1_content', '')}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
     
-    st.markdown(f"""
-    <div class="yellow-box">
-        <h4 style="color: #92400E; font-size: 1.2rem; margin-bottom: 1rem;">{content.get('section1_interactive_question', 'When have you felt distant from God?')}</h4>
-        <p style="color: #252628; margin-bottom: 1rem;">Select all that apply (or add your own):</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Interactive selector
+    if content.get("section1_show_interactive", True):
+        st.markdown(f"""
+        <div class="yellow-box">
+            <h4 style="color: #92400E; font-size: 1.2rem; margin-bottom: 1rem;">{content.get('section1_interactive_question', 'When have you felt distant from God?')}</h4>
+            <p style="color: #252628; margin-bottom: 1rem;">Select all that apply (or add your own):</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Parse struggles from content
+        struggles = [s.strip() for s in content.get('struggles_list', '').split('\n') if s.strip()]
+        
+        # Create columns for selection
+        col1, col2 = st.columns(2)
+        
+        for idx, struggle in enumerate(struggles):
+            with col1 if idx % 2 == 0 else col2:
+                is_selected = struggle in st.session_state.selected_struggles
+                
+                if st.button(
+                    f"{'✓ ' if is_selected else ''}{struggle}",
+                    key=f"struggle_{idx}",
+                    use_container_width=True,
+                    type="primary" if is_selected else "secondary"
+                ):
+                    if is_selected:
+                        st.session_state.selected_struggles.remove(struggle)
+                    else:
+                        st.session_state.selected_struggles.append(struggle)
+                    st.rerun()
+        
+        st.markdown("<br>", unsafe_allow_html=True)
     
-    # Parse struggles from content
-    struggles = [s.strip() for s in content.get('struggles_list', '').split('\n') if s.strip()]
+    # Discussion question
+    if content.get("section1_show_question", True):
+        st.markdown(f"""
+        <div class="discussion-box" style="border-left: 4px solid #8B7B9E;">
+            <h4 style="color: #6F6354; font-size: 1.1rem; margin-bottom: 1rem;">Reflect & Respond</h4>
+            <p style="color: #252628; font-style: italic; margin-bottom: 1rem;">
+                {content.get('section1_question', '')}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        reflection = st.text_area(
+            "Type your thoughts here...",
+            value=st.session_state.reflections.get('section1', ''),
+            key="reflection_section1",
+            height=120
+        )
+        st.session_state.reflections['section1'] = reflection
     
-    # Create columns for selection
-    col1, col2 = st.columns(2)
-    
-    for idx, struggle in enumerate(struggles):
-        with col1 if idx % 2 == 0 else col2:
-            is_selected = struggle in st.session_state.selected_struggles
-            
-            if st.button(
-                f"{'✓ ' if is_selected else ''}{struggle}",
-                key=f"struggle_{idx}",
-                use_container_width=True,
-                type="primary" if is_selected else "secondary"
-            ):
-                if is_selected:
-                    st.session_state.selected_struggles.remove(struggle)
-                else:
-                    st.session_state.selected_struggles.append(struggle)
-                st.rerun()
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    st.markdown(f"""
-    <div class="discussion-box" style="border-left: 4px solid #8B7B9E;">
-        <h4 style="color: #6F6354; font-size: 1.1rem; margin-bottom: 1rem;">Reflect & Respond</h4>
-        <p style="color: #252628; font-style: italic; margin-bottom: 1rem;">
-            {content.get('section1_question', '')}
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    reflection = st.text_area(
-        "Type your thoughts here...",
-        value=st.session_state.reflections.get('section1', ''),
-        key="reflection_section1",
-        height=120
-    )
-    st.session_state.reflections['section1'] = reflection
-    
-    st.markdown(f"""
-    <div class="proof-box">
-        <p style="color: #6F6354; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">KEY TRUTH:</p>
-        <p style="color: #252628; font-style: italic;">
-            {content.get('section1_key_truth', '')}
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Key truth
+    if content.get("section1_show_key_truth", True):
+        st.markdown(f"""
+        <div class="proof-box">
+            <p style="color: #6F6354; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">KEY TRUTH:</p>
+            <p style="color: #252628; font-style: italic;">
+                {content.get('section1_key_truth', '')}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # Section 3: Our Shared Responsibility
