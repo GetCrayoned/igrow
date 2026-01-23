@@ -226,6 +226,44 @@ st.markdown("""
         border-radius: 0.5rem;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
+    
+    /* Dark mode text color fix - force all custom boxes to use dark text */
+    .ice-breaker-box, .ice-breaker-box *,
+    .big-idea-box, .big-idea-box *,
+    .passage-box, .passage-box *,
+    .discussion-box, .discussion-box *,
+    .proof-box, .proof-box *,
+    .yellow-box, .yellow-box *,
+    .blue-box, .blue-box *,
+    .orange-box, .orange-box *,
+    .green-box, .green-box *,
+    .success-box, .success-box *,
+    .section-1, .section-1 *,
+    .section-2, .section-2 *,
+    .section-3, .section-3 *,
+    .scrollable-content, .scrollable-content * {
+        color: #252628 !important;
+    }
+    
+    /* Preserve specific colors for headings and styled text */
+    .ice-breaker-box h2, .ice-breaker-box h3, .ice-breaker-box h4,
+    .big-idea-box h2, .big-idea-box h3, .big-idea-box h4,
+    .blue-box h3, .blue-box h4,
+    .yellow-box h4,
+    .orange-box h3,
+    .green-box h3, .green-box h4,
+    .success-box h3, .success-box h4 {
+        color: inherit !important;
+    }
+    
+    /* Gradient headers should keep white text */
+    .gradient-header, .gradient-header *,
+    .gradient-header-blue, .gradient-header-blue *,
+    .gradient-header-green, .gradient-header-green *,
+    .gradient-insight, .gradient-insight *,
+    .info-box, .info-box * {
+        color: white !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
