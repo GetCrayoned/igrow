@@ -24,7 +24,6 @@ Simply visit the deployed app URL and navigate through the weekly Bible study ma
 4. Click "Save Changes" to update
 5. Logout when done
 
-**Default Password:** `password` (change this before deploying!)
 
 ## Deployment
 
