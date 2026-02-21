@@ -15,7 +15,7 @@ import hashlib
 
 # Page configuration
 st.set_page_config(
-    page_title="I-Grow Discipleship Guide",
+    page_title="Banig Bible Study Guide",
     page_icon="📖",
     layout="wide",
     initial_sidebar_state="collapsed"
