@@ -1,6 +1,6 @@
 {
   "main_title": "BANIG Bible Study Guide",
-  "study_topic": "hatdog na may cheese",
+  "study_topic": "Study Title Here",
   "context": "Context: Campus and Workplace Small Groups (Philippines)",
   "enable_icebreaker": true,
   "enable_section1": true,
@@ -38,8 +38,8 @@
   "safespace_list": "Listen without interrupting\nNo gossip rule\nShare our own struggles first\nPray for each other regularly\nCheck in during the week\nCelebrate small wins together",
   "section1_show_content": true,
   "section1_show_question": true,
-  "section1_show_key_truth": false,
-  "section1_show_interactive": false,
+  "section1_show_key_truth": true,
+  "section1_show_interactive": true,
   "section2_show_content": true,
   "section2_show_question": true,
   "section2_show_key_truth": true,
