@@ -10,12 +10,14 @@ Features:
 import streamlit as st
 import json
 import os
+import base64
+import requests
 from pathlib import Path
 import hashlib
 
 # Page configuration
 st.set_page_config(
-    page_title="Banig Bible Study Guide",
+    page_title="I-Grow Discipleship Guide",
     page_icon="📖",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -226,44 +228,6 @@ st.markdown("""
         border-radius: 0.5rem;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-    
-    /* Dark mode text color fix - force all custom boxes to use dark text */
-    .ice-breaker-box, .ice-breaker-box *,
-    .big-idea-box, .big-idea-box *,
-    .passage-box, .passage-box *,
-    .discussion-box, .discussion-box *,
-    .proof-box, .proof-box *,
-    .yellow-box, .yellow-box *,
-    .blue-box, .blue-box *,
-    .orange-box, .orange-box *,
-    .green-box, .green-box *,
-    .success-box, .success-box *,
-    .section-1, .section-1 *,
-    .section-2, .section-2 *,
-    .section-3, .section-3 *,
-    .scrollable-content, .scrollable-content * {
-        color: #252628 !important;
-    }
-    
-    /* Preserve specific colors for headings and styled text */
-    .ice-breaker-box h2, .ice-breaker-box h3, .ice-breaker-box h4,
-    .big-idea-box h2, .big-idea-box h3, .big-idea-box h4,
-    .blue-box h3, .blue-box h4,
-    .yellow-box h4,
-    .orange-box h3,
-    .green-box h3, .green-box h4,
-    .success-box h3, .success-box h4 {
-        color: inherit !important;
-    }
-    
-    /* Gradient headers should keep white text */
-    .gradient-header, .gradient-header *,
-    .gradient-header-blue, .gradient-header-blue *,
-    .gradient-header-green, .gradient-header-green *,
-    .gradient-insight, .gradient-insight *,
-    .info-box, .info-box * {
-        color: white !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -337,10 +301,58 @@ def load_content():
             "safespace_list": "Listen without interrupting\nNo gossip rule\nShare our own struggles first\nPray for each other regularly\nCheck in during the week\nCelebrate small wins together"
         }
 
+def push_to_github(json_str: str):
+    """Push the JSON string to GitHub via the Contents API.
+    Reads config from st.secrets['github'].
+    Returns (success: bool, message: str).
+    """
+    try:
+        gh = st.secrets["github"]
+        token    = gh["token"]
+        repo     = gh["repo"]       # e.g. "YourUsername/your-repo"
+        branch   = gh.get("branch", "main")
+        filepath = gh.get("filepath", "igrow_content.json")
+    except (KeyError, AttributeError) as e:
+        return False, f"Missing GitHub secret: {e}. Check .streamlit/secrets.toml."
+
+    api_url = f"https://api.github.com/repos/{repo}/contents/{filepath}"
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json",
+    }
+
+    # Get current file SHA (required for updates)
+    sha = None
+    get_resp = requests.get(api_url, headers=headers, params={"ref": branch})
+    if get_resp.status_code == 200:
+        sha = get_resp.json().get("sha")
+    elif get_resp.status_code not in (404,):
+        return False, f"GitHub GET failed ({get_resp.status_code}): {get_resp.text[:200]}"
+
+    # Encode content as base64
+    encoded = base64.b64encode(json_str.encode("utf-8")).decode("utf-8")
+
+    payload = {
+        "message": "chore: update igrow_content.json via CMS",
+        "content": encoded,
+        "branch": branch,
+    }
+    if sha:
+        payload["sha"] = sha
+
+    put_resp = requests.put(api_url, headers=headers, json=payload)
+    if put_resp.status_code in (200, 201):
+        return True, "Pushed to GitHub successfully."
+    else:
+        return False, f"GitHub PUT failed ({put_resp.status_code}): {put_resp.text[:300]}"
+
+
 def save_content(content):
-    """Save content to JSON file."""
+    """Save content to JSON file and push to GitHub."""
+    json_str = json.dumps(content, indent=2, ensure_ascii=False)
     with open(CONTENT_FILE, 'w', encoding='utf-8') as f:
-        json.dump(content, f, indent=2, ensure_ascii=False)
+        f.write(json_str)
+    return push_to_github(json_str)
 
 # Initialize session state
 if 'logged_in' not in st.session_state:
@@ -404,8 +416,11 @@ def show_admin_editor():
         st.markdown("---")
         
         if st.button("💾 Save Changes", use_container_width=True, type="primary"):
-            save_content(st.session_state.content)
-            st.success("Content saved successfully!")
+            gh_ok, gh_msg = save_content(st.session_state.content)
+            if gh_ok:
+                st.success("✅ Saved & pushed to GitHub!")
+            else:
+                st.warning(f"💾 Saved locally. GitHub push failed: {gh_msg}")
         
         if st.button("🚪 Logout", use_container_width=True):
             st.session_state.logged_in = False
