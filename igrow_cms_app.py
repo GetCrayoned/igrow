@@ -376,6 +376,128 @@ def fetch_gdoc_text(gdoc_url: str):
         return None, str(e)
 
 
+def parse_document_text(raw: str) -> dict:
+    """
+    Parse a plain-text I-Grow Bible study guide into CMS content fields.
+    Works with the standard Google Docs template format:
+      Title / Icebreaker / Big Idea / Passage & Key Text /
+      Section headings + body / Key Insight / Action Step
+    """
+    import re
+
+    # Normalise: strip trailing spaces, unify newlines, remove rule lines
+    lines = [l.rstrip() for l in raw.replace('\r\n', '\n').split('\n')]
+    lines = [l for l in lines if not re.match(r'^[_\-=\*]{3,}$', l.strip())]
+    text  = '\n'.join(lines)
+
+    def between(label_re, stop_re, src=text):
+        """Return text between two regex anchors (non-greedy)."""
+        m = re.search(label_re + r'\s*\n?(.+?)(?=' + stop_re + r'|\Z)',
+                      src, re.S | re.I)
+        return m.group(1).strip() if m else ''
+
+    # ─ Title ────────────────────────────────────────────────────────────
+    non_empty = [l for l in lines if l.strip()]
+    title = non_empty[0].strip() if non_empty else ''
+
+    # ─ Icebreaker ───────────────────────────────────────────────────────
+    icebreaker = between(r'Icebreaker\b', r'Big Idea\b')
+
+    # ─ Big Idea ──────────────────────────────────────────────────────────
+    big_idea = between(r'Big Idea\b', r'Passage\b')
+
+    # ─ Passage & key verse ──────────────────────────────────────────
+    passage_block = between(r'Passage\s*(?:&|and)?\s*Key Text\b', r'\n[A-Z][^\n]{3,40}\n')
+    # passage reference is just the first line
+    passage_lines = passage_block.split('\n')
+    passage_name  = passage_lines[0].strip() if passage_lines else ''
+    # quoted verse: supports straight and curly quotes
+    verse_m = re.search(r'["\u201c](.+?)["\u201d]', text)
+    key_verse = verse_m.group(1).strip() if verse_m else ''
+    # reference after the dash following the quoted verse
+    ref_m = re.search(r'["\u201d]\s*[\u2013\u2014\-]+\s*(.+?)(?:\n|$)', text)
+    verse_reference = ref_m.group(1).strip() if ref_m else ''
+
+    # ─ Section blocks ─────────────────────────────────────────────────────
+    # Split off everything after Key Insight
+    ki_split = re.split(r'\bKey Insight\b', text, maxsplit=1, flags=re.I)
+    body_text   = ki_split[0]
+    ending_text = ki_split[1] if len(ki_split) > 1 else ''
+
+    # A section heading: short line, starts with a capital, not a known keyword
+    SKIP = re.compile(
+        r'^(Icebreaker|Big Idea|Passage|Key|Action|Finding|\d)', re.I)
+    section_blocks = []
+    current_h, current_b = None, []
+    for line in body_text.split('\n'):
+        stripped = line.strip()
+        if (stripped
+                and len(stripped) < 60
+                and re.match(r'[A-Z]', stripped)
+                and not stripped.endswith('?')
+                and not stripped.endswith('.')
+                and not SKIP.match(stripped)):
+            if current_h is not None:
+                section_blocks.append((current_h, '\n'.join(current_b).strip()))
+            current_h, current_b = stripped, []
+        elif current_h:
+            current_b.append(line)
+    if current_h:
+        section_blocks.append((current_h, '\n'.join(current_b).strip()))
+
+    def split_section(block_text):
+        """Returns (content, question, key_truth) from a section block."""
+        q_lines   = [l.strip() for l in block_text.split('\n') if l.strip().endswith('?')]
+        non_q     = [l for l in block_text.split('\n')
+                     if l.strip() and not l.strip().endswith('?')]
+        content   = '\n'.join(non_q).strip()
+        question  = ' '.join(q_lines)
+        sentences = re.split(r'(?<=[.!])\s+', content)
+        key_truth = sentences[-1].strip() if sentences else ''
+        return content, question, key_truth
+
+    s_titles   = ['', '', '']
+    s_contents = ['', '', '']
+    s_questions= ['', '', '']
+    s_truths   = ['', '', '']
+    for i, (h, b) in enumerate(section_blocks[:3]):
+        s_titles[i]    = h
+        c, q, t        = split_section(b)
+        s_contents[i]  = c
+        s_questions[i] = q
+        s_truths[i]    = t
+
+    # ─ Key Insight & Action Step ────────────────────────────────────────────
+    key_insight = between(r'', r'Action Step\b', src=ending_text)
+    action_step = between(r'Action Step\b', r'\Z', src=ending_text)
+
+    # ─ Assemble & return ─────────────────────────────────────────────────────
+    result = {
+        "study_topic":      title,
+        "icebreaker_title": title,
+        "icebreaker_text":  icebreaker,
+        "big_idea":         big_idea,
+        "passage_name":     passage_name,
+        "key_verse":        key_verse,
+        "verse_reference":  verse_reference,
+        "section1_title":   s_titles[0],
+        "section1_content": s_contents[0],
+        "section1_question":s_questions[0],
+        "section1_key_truth":s_truths[0],
+        "section2_title":   s_titles[1],
+        "section2_content": s_contents[1],
+        "section2_question":s_questions[1],
+        "section2_key_truth":s_truths[1],
+        "section3_title":   s_titles[2],
+        "section3_content": s_contents[2],
+        "section3_question":s_questions[2],
+        "section3_key_truth":s_truths[2],
+        "key_insight":      key_insight,
+        "action_step":      action_step,
+    }
+    return result
+
+
 def import_with_gemini(raw_text: str):
     """
     Send raw study guide text to Gemini and ask it to return a JSON
@@ -756,9 +878,9 @@ def show_admin_editor():
 
         st.markdown("---")
 
-        # ── Gemini Document Import ───────────────────────────────────
-        st.subheader("🧠 Import Study via Gemini AI")
-        st.caption("Paste a public Google Docs link. Gemini will read and map it to all content fields automatically.")
+        # ── Document Import ──────────────────────────────────────────
+        st.subheader("📥 Import New Study Content")
+        st.caption("Paste a public Google Docs link to auto-fill all content fields.")
 
         gdoc_url = st.text_input(
             "Google Docs URL",
@@ -766,35 +888,56 @@ def show_admin_editor():
             placeholder="https://docs.google.com/document/d/.../edit"
         )
 
-        if st.button("🚀 Parse & Preview", use_container_width=True, key="gemini_parse_btn"):
+        # ─ Primary: pattern matching (always available) ─
+        col_parse, col_ai = st.columns(2)
+        with col_parse:
+            parse_clicked = st.button("🔍 Parse Document", use_container_width=True,
+                                      key="parse_btn", type="primary")
+        # ─ Secondary: Gemini (only if key is configured) ─
+        gemini_available = False
+        try:
+            _ = st.secrets["gemini"]["api_key"]
+            gemini_available = True
+        except Exception:
+            pass
+        with col_ai:
+            ai_clicked = st.button(
+                "🧠 Use Gemini AI" if gemini_available else "🧠 Gemini (key not set)",
+                use_container_width=True, key="gemini_btn",
+                disabled=not gemini_available
+            )
+
+        if parse_clicked or ai_clicked:
             if not gdoc_url:
                 st.warning("Please paste a Google Docs URL first.")
             else:
-                with st.spinner("🧠 Gemini is reading the document..."):
+                label = "🧠 Gemini is reading..." if ai_clicked else "🔍 Parsing document..."
+                with st.spinner(label):
                     raw, err = fetch_gdoc_text(gdoc_url)
                     if err:
                         st.error(err)
                     else:
-                        parsed, err2 = import_with_gemini(raw)
+                        if ai_clicked:
+                            parsed, err2 = import_with_gemini(raw)
+                        else:
+                            parsed, err2 = parse_document_text(raw), None
                         if err2:
                             st.error(err2)
-                        else:
+                        elif parsed:
                             st.session_state.import_preview = parsed
-                            st.success(f"✅ Parsed! Topic: **{parsed.get('study_topic', '?')}** — Review below, then Apply.")
+                            st.success(f"✅ Topic detected: **{parsed.get('study_topic', '?')}** — Review & Apply below.")
 
         if st.session_state.get("import_preview"):
             preview = st.session_state.import_preview
-            with st.expander("📋 Preview all parsed fields", expanded=True):
+            with st.expander("📋 Preview parsed fields", expanded=True):
                 for key, val in preview.items():
-                    st.markdown(f"**{key}:** {str(val)[:200]}")
+                    if val:
+                        st.markdown(f"**{key}:** {str(val)[:200]}")
 
             col_a, col_b = st.columns(2)
             with col_a:
-                if st.button("✅ Apply & Save", use_container_width=True, type="primary", key="apply_import_btn"):
-                    keep = {
-                        k: v for k, v in st.session_state.content.items()
-                        if k not in preview
-                    }
+                if st.button("✅ Apply & Save", use_container_width=True,
+                             type="primary", key="apply_import_btn"):
                     st.session_state.content = {**st.session_state.content, **preview}
                     gh_ok, gh_msg = save_content(st.session_state.content)
                     st.session_state.import_preview = None
