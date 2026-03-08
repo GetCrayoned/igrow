@@ -938,13 +938,12 @@ def show_admin_editor():
             with col_a:
                 if st.button("✅ Apply & Save", use_container_width=True,
                              type="primary", key="apply_import_btn"):
-                    # Merge imported content
-                    st.session_state.content = {**st.session_state.content, **preview}
-                    # ── KEY FIX: delete cached widget states so Streamlit
-                    #    re-initialises each text field from the new values
-                    for k in preview.keys():
-                        if k in st.session_state:
-                            del st.session_state[k]
+                    # Update both the content dict AND the widget's own session
+                    # state (same key) so Streamlit renders the new values immediately
+                    for k, v in preview.items():
+                        st.session_state.content[k] = v
+                        # Overwrite widget cache directly
+                        st.session_state[k] = v
                     gh_ok, gh_msg = save_content(st.session_state.content)
                     st.session_state.import_preview = None
                     if gh_ok:
