@@ -17,7 +17,6 @@ import io
 from datetime import datetime
 from pathlib import Path
 import hashlib
-import re
 
 # Page configuration
 st.set_page_config(
@@ -359,20 +358,32 @@ def save_content(content):
     return push_to_github(json_str)
 
 
-# ── Survey helpers ────────────────────────────────────────────────────────────
-SURVEY_FILE = "igrow_survey_responses.xlsx"
-SURVEY_COLUMNS = ["Timestamp", "Study Topic", "Name", "Group/Campus",
-                  "Satisfaction (1-5)", "What Resonated", "Suggestions"]
+# ── Survey helpers (JSON-based) ───────────────────────────────────────────────────
+# ── Survey helpers (Excel-based) ──────────────────────────────────────────────────
+SURVEY_FILE    = "igrow_survey_responses.xlsx"
+QUESTIONS_FILE = "igrow_survey_questions.json"
 
-def fetch_survey_dataframe():
-    """Download existing survey Excel from GitHub. Returns (df, sha)."""
+FIXED_COLUMNS = ["Timestamp", "Study Topic", "Name", "Group/Campus"]
+
+
+def load_survey_questions():
+    """Load question definitions from local JSON file."""
+    q_path = Path(QUESTIONS_FILE)
+    if q_path.exists():
+        with open(q_path, 'r', encoding='utf-8') as f:
+            return json.load(f).get("questions", [])
+    return []
+
+
+def fetch_survey_excel():
+    """Download existing survey Excel from GitHub. Returns (DataFrame, sha)."""
     try:
         gh = st.secrets["github"]
-        token = gh["token"]
-        repo  = gh["repo"]
+        token  = gh["token"]
+        repo   = gh["repo"]
         branch = gh.get("branch", "main")
     except (KeyError, AttributeError):
-        return pd.DataFrame(columns=SURVEY_COLUMNS), None
+        return None, None
 
     url = f"https://api.github.com/repos/{repo}/contents/{SURVEY_FILE}"
     headers = {"Authorization": f"token {token}",
@@ -383,21 +394,34 @@ def fetch_survey_dataframe():
         file_bytes = base64.b64decode(data["content"])
         df = pd.read_excel(io.BytesIO(file_bytes), engine="openpyxl")
         return df, data["sha"]
-    return pd.DataFrame(columns=SURVEY_COLUMNS), None
+    return None, None
 
 
 def submit_survey(responses: dict):
     """Append a survey response and push updated Excel to GitHub."""
-    df, sha = fetch_survey_dataframe()
+    questions   = load_survey_questions()
+    q_col_names = [q["label"] for q in questions]
+    all_columns = FIXED_COLUMNS + q_col_names
+
+    df, sha = fetch_survey_excel()
+    if df is None:
+        df = pd.DataFrame(columns=all_columns)
+
+    # Ensure any new question columns exist
+    for col in all_columns:
+        if col not in df.columns:
+            df[col] = ""
+
     new_row = {
-        "Timestamp":        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "Study Topic":      st.session_state.content.get("study_topic", ""),
-        "Name":             responses.get("name", ""),
-        "Group/Campus":     responses.get("group", ""),
-        "Satisfaction (1-5)": responses.get("rating", ""),
-        "What Resonated":   responses.get("resonated", ""),
-        "Suggestions":      responses.get("suggestions", ""),
+        "Timestamp":    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "Study Topic":  st.session_state.content.get("study_topic", ""),
+        "Name":         responses.get("name", ""),
+        "Group/Campus": responses.get("group", ""),
     }
+    # Add dynamic question answers (keyed by question id)
+    for q in questions:
+        new_row[q["label"]] = responses.get(q["id"], "")
+
     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
 
     buffer = io.BytesIO()
@@ -406,8 +430,8 @@ def submit_survey(responses: dict):
 
     try:
         gh = st.secrets["github"]
-        token = gh["token"]
-        repo  = gh["repo"]
+        token  = gh["token"]
+        repo   = gh["repo"]
         branch = gh.get("branch", "main")
     except (KeyError, AttributeError) as e:
         return False, f"Missing secret: {e}"
@@ -422,157 +446,6 @@ def submit_survey(responses: dict):
     resp = requests.put(url, headers=headers, json=payload)
     return (True, "Submitted!") if resp.status_code in (200, 201) \
         else (False, f"Push failed ({resp.status_code}): {resp.text[:200]}")
-
-
-# ── Document import (pattern matching) ───────────────────────────────────────
-def parse_document_text(text: str) -> dict:
-    """
-    Parse a plain-text Bible study guide into CMS content fields.
-    Expected format (same as I-Grow Google Docs template):
-      Line 1: Study Title
-      Icebreaker <text>
-      Big Idea <text>
-      Passage & Key Text <Ref> "<verse>" - <ref>
-      <Section heading>\n<body paragraphs>\n<Discussion question?>
-      Key Insight <text>
-      Action Step <text>
-    """
-    # Normalise line endings
-    lines = [l.strip() for l in text.replace('\r\n', '\n').split('\n')]
-    # Remove divider lines
-    lines = [l for l in lines if not re.match(r'^[_\-=]{4,}$', l)]
-    full = '\n'.join(lines)
-
-    content = {}
-
-    # ── Title ────────────────────────────────────────────────────────────────
-    # First non-empty line is the title (may be repeated — take first)
-    title_lines = [l for l in lines if l]
-    content["study_topic"] = title_lines[0] if title_lines else ""
-    content["icebreaker_title"] = content["study_topic"]
-    content["main_title"] = "I-Grow Discipleship Guide"
-    content["context"] = "Context: Campus and Workplace Small Groups (Philippines)"
-
-    # ── Icebreaker ───────────────────────────────────────────────────────────
-    m = re.search(r'Icebreaker\s+(.+?)(?=Big Idea|Passage|\Z)', full, re.S | re.I)
-    content["icebreaker_text"] = m.group(1).strip() if m else ""
-
-    # ── Big Idea ─────────────────────────────────────────────────────────────
-    m = re.search(r'Big Idea\s+(.+?)(?=Passage|\Z)', full, re.S | re.I)
-    content["big_idea"] = m.group(1).strip() if m else ""
-
-    # ── Passage & Key Verse ──────────────────────────────────────────────────
-    m = re.search(r'Passage\s*&?\s*Key Text\s+(.+?)(?=\n)', full, re.I)
-    if m:
-        passage_line = m.group(1).strip()
-        # passage ref is before the quoted verse
-        ref_match = re.match(r'([^"]+)', passage_line)
-        content["passage_name"] = ref_match.group(1).strip() if ref_match else passage_line
-    else:
-        content["passage_name"] = ""
-
-    verse_match = re.search(r'["\u201c](.+?)["\u201d]\s*[\u2013\-]+\s*(.+?)(?=\n|$)', full)
-    if verse_match:
-        content["key_verse"]       = verse_match.group(1).strip()
-        content["verse_reference"] = verse_match.group(2).strip()
-    else:
-        content["key_verse"] = content["verse_reference"] = ""
-
-    # ── Sections (detect by heading then collect body + questions) ───────────
-    # A section heading is a short line (< 60 chars) not matching known keywords
-    SKIP_PATTERN = re.compile(
-        r'^(Icebreaker|Big Idea|Passage|Key Insight|Action Step|Finding|One God)',
-        re.I)
-    # Split body after Passage block
-    after_passage = re.split(r'Passage\s*&?\s*Key Text.+?(?=\n\n|\n[A-Z])',
-                              full, maxsplit=1, flags=re.S | re.I)
-    body = after_passage[-1] if len(after_passage) > 1 else full
-
-    # Split on Key Insight to separate section body from ending
-    body_parts = re.split(r'Key Insight', body, maxsplit=1, flags=re.I)
-    sections_text = body_parts[0]
-    ending_text   = body_parts[1] if len(body_parts) > 1 else ""
-
-    # Find section headings: lines < 55 chars, Title Case or ALL CAPS, no period
-    section_blocks = []
-    sec_lines = sections_text.split('\n')
-    current_heading = None
-    current_body = []
-    for line in sec_lines:
-        if (line and len(line) < 55
-                and not SKIP_PATTERN.match(line)
-                and not line.endswith('?')
-                and re.search(r'[A-Z]', line)
-                and not re.match(r'^[a-z]', line)):
-            if current_heading is not None:
-                section_blocks.append((current_heading, '\n'.join(current_body).strip()))
-            current_heading = line
-            current_body = []
-        elif current_heading:
-            current_body.append(line)
-    if current_heading:
-        section_blocks.append((current_heading, '\n'.join(current_body).strip()))
-
-    section_keys = [
-        ("section1_title", "section1_content", "section1_question", "section1_key_truth"),
-        ("section2_title", "section2_content", "section2_question", "section2_key_truth"),
-        ("section3_title", "section3_content", "section3_question", "section3_key_truth"),
-    ]
-
-    for i, (heading, body_text) in enumerate(section_blocks[:3]):
-        tk, ck, qk, kk = section_keys[i]
-        content[tk] = heading
-
-        # Questions are lines ending with ?
-        q_lines = [l for l in body_text.split('\n') if l.strip().endswith('?')]
-        content[qk] = ' '.join(q_lines).strip()
-
-        # Content = everything except question lines
-        non_q = [l for l in body_text.split('\n')
-                 if l.strip() and not l.strip().endswith('?')]
-        content[ck] = '\n'.join(non_q).strip()
-
-        # Key truth = last non-question sentence of content
-        sentences = re.split(r'(?<=[.!])\s+', content[ck])
-        content[kk] = sentences[-1].strip() if sentences else ""
-
-    # Fill missing sections with empty strings
-    for i in range(len(section_blocks), 3):
-        tk, ck, qk, kk = section_keys[i]
-        content[tk] = content[ck] = content[qk] = content[kk] = ""
-
-    # ── Key Insight ──────────────────────────────────────────────────────────
-    m = re.search(r'Key Insight\s*\n(.+?)(?=Action Step|\Z)', ending_text, re.S | re.I)
-    content["key_insight"] = m.group(1).strip() if m else ""
-
-    # ── Action Step ──────────────────────────────────────────────────────────
-    m = re.search(r'Action Step\s*\n(.+?)(?=\Z)', ending_text, re.S | re.I)
-    content["action_step"] = m.group(1).strip() if m else ""
-
-    # ── Preserve defaults for toggles and interactive lists ──────────────────
-    defaults = {
-        "enable_icebreaker": True, "enable_section1": True,
-        "enable_section2": True,  "enable_section3": True,
-        "enable_key_insight": True, "enable_action_step": True,
-        "section1_show_content": True, "section1_show_question": True,
-        "section1_show_key_truth": True, "section1_show_interactive": True,
-        "section1_interactive_question": "When have you felt this way?",
-        "section1_enable_struggles_selector": True,
-        "section2_show_content": True, "section2_show_question": True,
-        "section2_show_key_truth": True, "section2_show_interactive": True,
-        "section2_interactive_question": "How can we support each other?",
-        "section2_enable_safespace_selector": True,
-        "section3_show_content": True, "section3_show_question": True,
-        "section3_show_key_truth": True, "section3_show_interactive": True,
-        "section3_interactive_question": "Who needs this in your circle?",
-        "section3_enable_person_input": True,
-        "struggles_list": "Felt confused or lost\nGoing through a dark season\nSearching for meaning\nFeeling isolated or alone\nDoubting God's presence\nStruggling with purpose",
-        "safespace_list": "Listen without interrupting\nPray for each other regularly\nCheck in during the week\nShare our own struggles first\nNo gossip rule\nCelebrate each other's victories",
-    }
-    for k, v in defaults.items():
-        content.setdefault(k, v)
-
-    return content
 
 
 # Initialize session state
@@ -807,69 +680,6 @@ def show_admin_editor():
             height=120
         )
 
-        st.markdown("---")
-
-        # ── Document Import ────────────────────────────────────────────────
-        st.subheader("📥 Import New Study Content")
-        st.caption("Paste a public Google Docs link OR upload a .txt file to auto-fill all fields.")
-
-        gdoc_url = st.text_input(
-            "Google Docs link (must be 'Anyone with link can view')",
-            key="gdoc_url_input",
-            placeholder="https://docs.google.com/document/d/.../edit"
-        )
-
-        uploaded_file = st.file_uploader("Or upload a .txt file", type=["txt"], key="import_file")
-
-        if st.button("🔍 Preview Parsed Content", use_container_width=True):
-            raw_text = None
-            with st.spinner("Fetching document..."):
-                if gdoc_url:
-                    doc_id_match = re.search(r'/d/([a-zA-Z0-9_-]+)', gdoc_url)
-                    if doc_id_match:
-                        export_url = f"https://docs.google.com/document/d/{doc_id_match.group(1)}/export?format=txt"
-                        try:
-                            r = requests.get(export_url, timeout=10)
-                            if r.status_code == 200:
-                                raw_text = r.text
-                            else:
-                                st.error(f"Could not fetch document ({r.status_code}). Make sure it's publicly shared.")
-                        except Exception as ex:
-                            st.error(f"Error fetching document: {ex}")
-                    else:
-                        st.error("Could not extract document ID from URL.")
-                elif uploaded_file:
-                    raw_text = uploaded_file.read().decode("utf-8", errors="ignore")
-                else:
-                    st.warning("Please paste a Google Docs URL or upload a .txt file.")
-
-            if raw_text:
-                parsed = parse_document_text(raw_text)
-                st.session_state.import_preview = parsed
-                st.success(f"✅ Parsed! Study: **{parsed.get('study_topic', 'Unknown')}**. Review below, then click Apply.")
-
-        if st.session_state.import_preview:
-            with st.expander("📋 Preview parsed fields", expanded=False):
-                preview = st.session_state.import_preview
-                st.write(f"**Topic:** {preview.get('study_topic','')}")
-                st.write(f"**Icebreaker:** {preview.get('icebreaker_text','')[:120]}...")
-                st.write(f"**Big Idea:** {preview.get('big_idea','')}")
-                st.write(f"**Passage:** {preview.get('passage_name','')} | *{preview.get('key_verse','')}*")
-                st.write(f"**S1:** {preview.get('section1_title','')}")
-                st.write(f"**S2:** {preview.get('section2_title','')}")
-                st.write(f"**S3:** {preview.get('section3_title','')}")
-                st.write(f"**Key Insight:** {preview.get('key_insight','')[:120]}...")
-                st.write(f"**Action Step:** {preview.get('action_step','')}")
-
-            if st.button("✅ Apply to App & Save", use_container_width=True, type="primary"):
-                st.session_state.content.update(st.session_state.import_preview)
-                gh_ok, gh_msg = save_content(st.session_state.content)
-                st.session_state.import_preview = None
-                if gh_ok:
-                    st.success("✅ Content applied & pushed to GitHub!")
-                else:
-                    st.warning(f"Applied locally, push failed: {gh_msg}")
-                st.rerun()
 
 
 # ── Satisfaction Survey (visible to all users) ────────────────────────────────
@@ -891,42 +701,45 @@ def section_survey():
         """, unsafe_allow_html=True)
         return
 
+    questions = load_survey_questions()
+
     with st.form("survey_form", clear_on_submit=True):
+        # Fixed fields: name & group always shown
         col1, col2 = st.columns(2)
         with col1:
             name = st.text_input("Your Name", placeholder="Optional")
         with col2:
             group = st.text_input("Small Group / Campus", placeholder="Optional")
 
-        rating = st.radio(
-            "Overall Satisfaction ⭐",
-            options=[1, 2, 3, 4, 5],
-            format_func=lambda x: "⭐" * x,
-            horizontal=True,
-            index=4
-        )
-        resonated = st.text_area(
-            "What resonated with you most from today's study?",
-            height=100,
-            placeholder="Share what stood out to you..."
-        )
-        suggestions = st.text_area(
-            "Any suggestions or feedback for us?",
-            height=80,
-            placeholder="We'd love to hear how we can improve!"
-        )
+        # Dynamic questions loaded from igrow_survey_questions.json
+        answers = {}
+        for q in questions:
+            qid    = q.get("id", "")
+            label  = q.get("label", qid)
+            qtype  = q.get("type", "textarea")
+            hint   = q.get("placeholder", "")
+            height = q.get("height", 100)
+
+            if qtype == "rating":
+                answers[qid] = st.radio(
+                    f"{label} ⭐",
+                    options=[1, 2, 3, 4, 5],
+                    format_func=lambda x: "⭐" * x,
+                    horizontal=True,
+                    index=4,
+                    key=f"survey_{qid}"
+                )
+            elif qtype == "text_input":
+                answers[qid] = st.text_input(label, placeholder=hint, key=f"survey_{qid}")
+            else:  # textarea (default)
+                answers[qid] = st.text_area(label, height=height,
+                                            placeholder=hint, key=f"survey_{qid}")
 
         submitted = st.form_submit_button("Submit Feedback 💬", use_container_width=True)
 
     if submitted:
         with st.spinner("Saving your response..."):
-            ok, msg = submit_survey({
-                "name": name,
-                "group": group,
-                "rating": rating,
-                "resonated": resonated,
-                "suggestions": suggestions,
-            })
+            ok, msg = submit_survey({"name": name, "group": group, **answers})
         if ok:
             st.session_state.survey_submitted = True
             st.rerun()

@@ -1,0 +1,24 @@
+{
+  "questions": [
+    {
+      "id": "rating",
+      "type": "rating",
+      "label": "Overall Satisfaction",
+      "required": true
+    },
+    {
+      "id": "resonated",
+      "type": "textarea",
+      "label": "What resonated with you most from today's study?",
+      "placeholder": "Share what stood out to you...",
+      "height": 100
+    },
+    {
+      "id": "suggestions",
+      "type": "textarea",
+      "label": "Any suggestions or feedback for us?",
+      "placeholder": "We'd love to hear how we can improve!",
+      "height": 80
+    }
+  ]
+}
