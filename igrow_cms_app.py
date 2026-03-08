@@ -572,39 +572,52 @@ def load_survey_questions():
 
 
 def fetch_survey_excel():
-    """Download existing survey Excel from GitHub. Returns (DataFrame, sha)."""
+    """Download existing survey Excel from GitHub. Returns (DataFrame, sha, error)."""
     try:
         gh = st.secrets["github"]
         token  = gh["token"]
         repo   = gh["repo"]
         branch = gh.get("branch", "main")
     except (KeyError, AttributeError):
-        return None, None
+        return None, None, "GitHub secrets not configured"
 
     url = f"https://api.github.com/repos/{repo}/contents/{SURVEY_FILE}"
     headers = {"Authorization": f"token {token}",
                "Accept": "application/vnd.github+json"}
     resp = requests.get(url, headers=headers, params={"ref": branch})
-    if resp.status_code == 200:
-        data = resp.json()
-        file_bytes = base64.b64decode(data["content"])
+
+    if resp.status_code == 404:
+        # File doesn't exist yet — first submission
+        return None, None, None
+    if resp.status_code != 200:
+        return None, None, f"GitHub GET failed ({resp.status_code})"
+
+    data = resp.json()
+    # GitHub embeds newlines every 60 chars — strip before decoding
+    raw_b64 = data["content"].replace("\n", "").replace(" ", "")
+    try:
+        file_bytes = base64.b64decode(raw_b64)
         df = pd.read_excel(io.BytesIO(file_bytes), engine="openpyxl")
-        return df, data["sha"]
-    return None, None
+        return df, data["sha"], None
+    except Exception as e:
+        return None, data.get("sha"), f"Could not read Excel: {e}"
 
 
 def submit_survey(responses: dict):
     """Append a survey response and push updated Excel to GitHub."""
     questions   = load_survey_questions()
     q_col_names = [q["label"] for q in questions]
-    # Only Timestamp and Study Topic are truly fixed — all other fields come from JSON
     all_columns = ["Timestamp", "Study Topic"] + q_col_names
 
-    df, sha = fetch_survey_excel()
-    if df is None:
+    df, sha, read_err = fetch_survey_excel()
+
+    if read_err and "Could not read" in read_err:
+        # Existing file unreadable — start fresh but warn
+        df = pd.DataFrame(columns=all_columns)
+    elif df is None:
         df = pd.DataFrame(columns=all_columns)
 
-    # Ensure any new question columns exist (handles added questions gracefully)
+    # Ensure any new question columns exist
     for col in all_columns:
         if col not in df.columns:
             df[col] = ""
@@ -613,7 +626,6 @@ def submit_survey(responses: dict):
         "Timestamp":   datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "Study Topic": st.session_state.content.get("study_topic", ""),
     }
-    # All other answers keyed by question label
     for q in questions:
         new_row[q["label"]] = responses.get(q["id"], "")
 
@@ -621,7 +633,8 @@ def submit_survey(responses: dict):
 
     buffer = io.BytesIO()
     df.to_excel(buffer, index=False, engine="openpyxl")
-    encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    buffer.seek(0)
+    encoded = base64.b64encode(buffer.read()).decode("utf-8")
 
     try:
         gh = st.secrets["github"]
@@ -639,8 +652,11 @@ def submit_survey(responses: dict):
     if sha:
         payload["sha"] = sha
     resp = requests.put(url, headers=headers, json=payload)
-    return (True, "Submitted!") if resp.status_code in (200, 201) \
-        else (False, f"Push failed ({resp.status_code}): {resp.text[:200]}")
+    if resp.status_code in (200, 201):
+        row_count = len(df)
+        return True, f"Submitted! ({row_count} total responses in file)"
+    return False, f"Push failed ({resp.status_code}): {resp.text[:300]}"
+
 
 
 # Initialize session state
