@@ -358,6 +358,80 @@ def save_content(content):
     return push_to_github(json_str)
 
 
+# ── Gemini-powered document import ──────────────────────────────────────────────
+def fetch_gdoc_text(gdoc_url: str):
+    """Export a public Google Doc as plain text. Returns (text, error)."""
+    import re
+    match = re.search(r'/d/([a-zA-Z0-9_-]+)', gdoc_url)
+    if not match:
+        return None, "Could not find a document ID in that URL."
+    doc_id = match.group(1)
+    export_url = f"https://docs.google.com/document/d/{doc_id}/export?format=txt"
+    try:
+        r = requests.get(export_url, timeout=15)
+        if r.status_code == 200:
+            return r.text, None
+        return None, f"Google returned status {r.status_code}. Make sure the doc is set to 'Anyone with link can view'."
+    except Exception as e:
+        return None, str(e)
+
+
+def import_with_gemini(raw_text: str):
+    """
+    Send raw study guide text to Gemini and ask it to return a JSON
+    object mapping content to the CMS fields.
+    Returns (parsed_dict, error_message).
+    """
+    try:
+        import google.generativeai as genai
+        api_key = st.secrets["gemini"]["api_key"]
+    except (KeyError, AttributeError):
+        return None, "Gemini API key not found. Add [gemini] api_key to Streamlit secrets."
+    except ImportError:
+        return None, "google-generativeai package not installed."
+
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-1.5-flash")
+
+    prompt = f"""
+You are a content assistant for a Bible study app. Read the following study guide text and extract its content into a JSON object with EXACTLY these keys:
+
+  study_topic, icebreaker_title, icebreaker_text, big_idea,
+  passage_name, key_verse, verse_reference,
+  section1_title, section1_content, section1_question, section1_key_truth,
+  section2_title, section2_content, section2_question, section2_key_truth,
+  section3_title, section3_content, section3_question, section3_key_truth,
+  key_insight, action_step
+
+Rules:
+- section1/2/3_title = the heading of each main section
+- section_content = the teaching paragraphs (NOT the discussion questions)
+- section_question = the discussion question(s) for that section
+- section_key_truth = a 1-2 sentence summary of the section's core truth
+- key_verse = just the verse text, no reference
+- verse_reference = e.g. "John 9:5, ESV"
+- Return ONLY valid JSON, no markdown fences, no extra text.
+
+Study guide text:
+"""
+    prompt += raw_text[:8000]  # stay within token limits
+
+    try:
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+        # Strip markdown code fences if Gemini wraps the JSON
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        parsed = json.loads(text)
+        return parsed, None
+    except json.JSONDecodeError as e:
+        return None, f"Gemini returned invalid JSON: {e}"
+    except Exception as e:
+        return None, f"Gemini API error: {e}"
+
+
 # ── Survey helpers (JSON-based) ───────────────────────────────────────────────────
 # ── Survey helpers (Excel-based) ──────────────────────────────────────────────────
 SURVEY_FILE    = "igrow_survey_responses.xlsx"
@@ -680,7 +754,59 @@ def show_admin_editor():
             height=120
         )
 
+        st.markdown("---")
 
+        # ── Gemini Document Import ───────────────────────────────────
+        st.subheader("🧠 Import Study via Gemini AI")
+        st.caption("Paste a public Google Docs link. Gemini will read and map it to all content fields automatically.")
+
+        gdoc_url = st.text_input(
+            "Google Docs URL",
+            key="gdoc_import_url",
+            placeholder="https://docs.google.com/document/d/.../edit"
+        )
+
+        if st.button("🚀 Parse & Preview", use_container_width=True, key="gemini_parse_btn"):
+            if not gdoc_url:
+                st.warning("Please paste a Google Docs URL first.")
+            else:
+                with st.spinner("🧠 Gemini is reading the document..."):
+                    raw, err = fetch_gdoc_text(gdoc_url)
+                    if err:
+                        st.error(err)
+                    else:
+                        parsed, err2 = import_with_gemini(raw)
+                        if err2:
+                            st.error(err2)
+                        else:
+                            st.session_state.import_preview = parsed
+                            st.success(f"✅ Parsed! Topic: **{parsed.get('study_topic', '?')}** — Review below, then Apply.")
+
+        if st.session_state.get("import_preview"):
+            preview = st.session_state.import_preview
+            with st.expander("📋 Preview all parsed fields", expanded=True):
+                for key, val in preview.items():
+                    st.markdown(f"**{key}:** {str(val)[:200]}")
+
+            col_a, col_b = st.columns(2)
+            with col_a:
+                if st.button("✅ Apply & Save", use_container_width=True, type="primary", key="apply_import_btn"):
+                    keep = {
+                        k: v for k, v in st.session_state.content.items()
+                        if k not in preview
+                    }
+                    st.session_state.content = {**st.session_state.content, **preview}
+                    gh_ok, gh_msg = save_content(st.session_state.content)
+                    st.session_state.import_preview = None
+                    if gh_ok:
+                        st.success("✅ Applied & pushed to GitHub!")
+                    else:
+                        st.warning(f"Applied locally. Push failed: {gh_msg}")
+                    st.rerun()
+            with col_b:
+                if st.button("❌ Discard", use_container_width=True, key="discard_import_btn"):
+                    st.session_state.import_preview = None
+                    st.rerun()
 
 # ── Satisfaction Survey (visible to all users) ────────────────────────────────
 def section_survey():
