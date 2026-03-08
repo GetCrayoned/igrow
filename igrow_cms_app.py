@@ -391,7 +391,7 @@ def import_with_gemini(raw_text: str):
         return None, "google-generativeai package not installed."
 
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-2.0-flash")
 
     prompt = f"""
 You are a content assistant for a Bible study app. Read the following study guide text and extract its content into a JSON object with EXACTLY these keys:
