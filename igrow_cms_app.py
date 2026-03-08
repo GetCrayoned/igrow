@@ -597,24 +597,23 @@ def submit_survey(responses: dict):
     """Append a survey response and push updated Excel to GitHub."""
     questions   = load_survey_questions()
     q_col_names = [q["label"] for q in questions]
-    all_columns = FIXED_COLUMNS + q_col_names
+    # Only Timestamp and Study Topic are truly fixed — all other fields come from JSON
+    all_columns = ["Timestamp", "Study Topic"] + q_col_names
 
     df, sha = fetch_survey_excel()
     if df is None:
         df = pd.DataFrame(columns=all_columns)
 
-    # Ensure any new question columns exist
+    # Ensure any new question columns exist (handles added questions gracefully)
     for col in all_columns:
         if col not in df.columns:
             df[col] = ""
 
     new_row = {
-        "Timestamp":    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "Study Topic":  st.session_state.content.get("study_topic", ""),
-        "Name":         responses.get("name", ""),
-        "Group/Campus": responses.get("group", ""),
+        "Timestamp":   datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "Study Topic": st.session_state.content.get("study_topic", ""),
     }
-    # Add dynamic question answers (keyed by question id)
+    # All other answers keyed by question label
     for q in questions:
         new_row[q["label"]] = responses.get(q["id"], "")
 
@@ -989,22 +988,46 @@ def section_survey():
     questions = load_survey_questions()
 
     with st.form("survey_form", clear_on_submit=True):
-        # Fixed fields: name & group always shown
-        col1, col2 = st.columns(2)
-        with col1:
-            name = st.text_input("Your Name", placeholder="Optional")
-        with col2:
-            group = st.text_input("Small Group / Campus", placeholder="Optional")
-
-        # Dynamic questions loaded from igrow_survey_questions.json
         answers = {}
-        for q in questions:
+        i = 0
+        while i < len(questions):
+            q = questions[i]
             qid    = q.get("id", "")
             label  = q.get("label", qid)
             qtype  = q.get("type", "textarea")
             hint   = q.get("placeholder", "")
             height = q.get("height", 100)
+            pair   = q.get("pair_with_next", False)
 
+            # Render two questions side-by-side if pair_with_next is true
+            if pair and i + 1 < len(questions):
+                q2      = questions[i + 1]
+                qid2    = q2.get("id", "")
+                label2  = q2.get("label", qid2)
+                qtype2  = q2.get("type", "textarea")
+                hint2   = q2.get("placeholder", "")
+                height2 = q2.get("height", 100)
+                col_l, col_r = st.columns(2)
+                with col_l:
+                    if qtype == "rating":
+                        answers[qid] = st.radio(f"{label} ⭐", options=[1,2,3,4,5],
+                            format_func=lambda x: "⭐"*x, horizontal=True, index=4, key=f"survey_{qid}")
+                    elif qtype == "text_input":
+                        answers[qid] = st.text_input(label, placeholder=hint, key=f"survey_{qid}")
+                    else:
+                        answers[qid] = st.text_area(label, height=height, placeholder=hint, key=f"survey_{qid}")
+                with col_r:
+                    if qtype2 == "rating":
+                        answers[qid2] = st.radio(f"{label2} ⭐", options=[1,2,3,4,5],
+                            format_func=lambda x: "⭐"*x, horizontal=True, index=4, key=f"survey_{qid2}")
+                    elif qtype2 == "text_input":
+                        answers[qid2] = st.text_input(label2, placeholder=hint2, key=f"survey_{qid2}")
+                    else:
+                        answers[qid2] = st.text_area(label2, height=height2, placeholder=hint2, key=f"survey_{qid2}")
+                i += 2
+                continue
+
+            # Single full-width question
             if qtype == "rating":
                 answers[qid] = st.radio(
                     f"{label} ⭐",
@@ -1016,15 +1039,15 @@ def section_survey():
                 )
             elif qtype == "text_input":
                 answers[qid] = st.text_input(label, placeholder=hint, key=f"survey_{qid}")
-            else:  # textarea (default)
-                answers[qid] = st.text_area(label, height=height,
-                                            placeholder=hint, key=f"survey_{qid}")
+            else:
+                answers[qid] = st.text_area(label, height=height, placeholder=hint, key=f"survey_{qid}")
+            i += 1
 
         submitted = st.form_submit_button("Submit Feedback 💬", use_container_width=True)
 
     if submitted:
         with st.spinner("Saving your response..."):
-            ok, msg = submit_survey({"name": name, "group": group, **answers})
+            ok, msg = submit_survey(answers)
         if ok:
             st.session_state.survey_submitted = True
             st.rerun()
