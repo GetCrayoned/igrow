@@ -1,6 +1,19 @@
 {
   "questions": [
     {
+      "id": "name",
+      "type": "text_input",
+      "label": "Your Name",
+      "placeholder": "Optional",
+      "pair_with_next": true
+    },
+    {
+      "id": "group",
+      "type": "text_input",
+      "label": "Small Group / Campus",
+      "placeholder": "Optional"
+    },
+    {
       "id": "rating",
       "type": "rating",
       "label": "Overall Satisfaction",
