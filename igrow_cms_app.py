@@ -678,6 +678,9 @@ if 'survey_submitted' not in st.session_state:
 if 'import_preview' not in st.session_state:
     st.session_state.import_preview = None
 
+if 'pending_import' not in st.session_state:
+    st.session_state.pending_import = None
+
 # Admin login interface
 def show_admin_login():
     st.markdown("""
@@ -710,7 +713,23 @@ def show_admin_editor():
     with st.sidebar:
         st.title("📝 Admin Content Editor")
         st.markdown("---")
-        
+
+        # ── Apply pending import BEFORE any widget is rendered ──────────────
+        if st.session_state.pending_import:
+            pending = st.session_state.pending_import
+            for k, v in pending.items():
+                # Update content dict
+                st.session_state.content[k] = v
+                # Safe to set widget state here — no widgets rendered yet
+                st.session_state[k] = v
+            gh_ok, gh_msg = save_content(st.session_state.content)
+            st.session_state.pending_import = None
+            if gh_ok:
+                st.success("✅ Import applied & pushed to GitHub!")
+            else:
+                st.warning(f"Import applied locally. Push failed: {gh_msg}")
+        # ─────────────────────────────────────────────────────────
+
         if st.button("💾 Save Changes", use_container_width=True, type="primary"):
             gh_ok, gh_msg = save_content(st.session_state.content)
             if gh_ok:
@@ -938,18 +957,10 @@ def show_admin_editor():
             with col_a:
                 if st.button("✅ Apply & Save", use_container_width=True,
                              type="primary", key="apply_import_btn"):
-                    # Update both the content dict AND the widget's own session
-                    # state (same key) so Streamlit renders the new values immediately
-                    for k, v in preview.items():
-                        st.session_state.content[k] = v
-                        # Overwrite widget cache directly
-                        st.session_state[k] = v
-                    gh_ok, gh_msg = save_content(st.session_state.content)
+                    # Store into pending — applied at top of editor on next rerun
+                    # (before widgets render, so widget-state keys can be set safely)
+                    st.session_state.pending_import = preview
                     st.session_state.import_preview = None
-                    if gh_ok:
-                        st.success("✅ Applied & pushed to GitHub!")
-                    else:
-                        st.warning(f"Applied locally. Push failed: {gh_msg}")
                     st.rerun()
             with col_b:
                 if st.button("❌ Discard", use_container_width=True, key="discard_import_btn"):
