@@ -379,16 +379,58 @@ def fetch_gdoc_text(gdoc_url: str):
 def parse_document_text(raw: str) -> dict:
     """
     Parse a plain-text I-Grow Bible study guide into CMS content fields.
-    Works with the standard Google Docs template format:
+
+    Supports two Google Docs template formats:
+
+    NEW FORMAT (structured with ## / ### headings):
+      ## TOPIC
+      Topic Name
+      (subtitle in parentheses)
+      ## ICEBREAKER
+      **"Icebreaker Title"** (duration)
+      ...instructions...
+      ## BIG IDEA
+      ...
+      ## PASSAGE & KEY TEXT
+      Reference (e.g. Malachi 4:1-3 (ESV))
+      "Full passage text..."
+      **Key Verse:**
+      "Verse text here."
+      (Reference, ESV)
+      ## THE LESSON
+      ### SECTION 1: PERSONAL APPLICATION
+      **How This Truth Shapes My Life**
+      ...teaching paragraphs...
+      **Proof Text:**
+      "..." (Reference)
+      **DISCUSSION QUESTIONS — Section 1**
+      * Open-ended question...
+      * Follow-up...
+      ### SECTION 2: ...
+      ### SECTION 3: ...
+      ## KEY INSIGHT
+      ...
+      ## ACTION STEP
+      **This Week: "..."**
+      1. Step one
+      2. Step two
+      ...
+
+    OLD FORMAT (legacy fallback):
       Title / Icebreaker / Big Idea / Passage & Key Text /
-      Section headings + body / Key Insight / Action Step
+      Short heading lines + body / Key Insight / Action Step
     """
     import re
 
-    # Normalise: strip trailing spaces, unify newlines, remove rule lines
+    # ── Normalise ────────────────────────────────────────────────────────────
     lines = [l.rstrip() for l in raw.replace('\r\n', '\n').split('\n')]
     lines = [l for l in lines if not re.match(r'^[_\-=\*]{3,}$', l.strip())]
     text  = '\n'.join(lines)
+
+    def clean(s):
+        """Strip markdown bold/italic markers and extra whitespace."""
+        s = re.sub(r'\*{1,2}([^*]+)\*{1,2}', r'\1', s)
+        return s.strip()
 
     def between(label_re, stop_re, src=text):
         """Return text between two regex anchors (non-greedy)."""
@@ -396,106 +438,261 @@ def parse_document_text(raw: str) -> dict:
                       src, re.S | re.I)
         return m.group(1).strip() if m else ''
 
-    # ─ Title ────────────────────────────────────────────────────────────
-    non_empty = [l for l in lines if l.strip()]
-    title = non_empty[0].strip() if non_empty else ''
+    # ════════════════════════════════════════════════════════════════════════
+    # Detect format: new format uses ## section markers
+    # ════════════════════════════════════════════════════════════════════════
+    is_new_format = bool(re.search(r'^##\s+(TOPIC|ICEBREAKER|THE LESSON)', text,
+                                   re.MULTILINE | re.IGNORECASE))
 
-    # ─ Icebreaker ───────────────────────────────────────────────────────
-    icebreaker = between(r'Icebreaker\b', r'Big Idea\b')
+    if is_new_format:
+        # ── Split into top-level ## sections ────────────────────────────────
+        section_map = {}
+        current_key = '__preamble__'
+        current_buf = []
+        for line in lines:
+            h2 = re.match(r'^##\s+(.+)', line)
+            if h2:
+                section_map[current_key] = '\n'.join(current_buf).strip()
+                current_key = h2.group(1).strip().upper()
+                current_buf = []
+            else:
+                current_buf.append(line)
+        section_map[current_key] = '\n'.join(current_buf).strip()
 
-    # ─ Big Idea ──────────────────────────────────────────────────────────
-    big_idea = between(r'Big Idea\b', r'Passage\b')
+        def sec(name):
+            """Get a top-level section by approximate name."""
+            for k, v in section_map.items():
+                if name.upper() in k:
+                    return v
+            return ''
 
-    # ─ Passage & key verse ──────────────────────────────────────────
-    passage_block = between(r'Passage\s*(?:&|and)?\s*Key Text\b', r'\n[A-Z][^\n]{3,40}\n')
-    # passage reference is just the first line
-    passage_lines = passage_block.split('\n')
-    passage_name  = passage_lines[0].strip() if passage_lines else ''
-    # quoted verse: supports straight and curly quotes
-    verse_m = re.search(r'["\u201c](.+?)["\u201d]', text)
-    key_verse = verse_m.group(1).strip() if verse_m else ''
-    # reference after the dash following the quoted verse
-    ref_m = re.search(r'["\u201d]\s*[\u2013\u2014\-]+\s*(.+?)(?:\n|$)', text)
-    verse_reference = ref_m.group(1).strip() if ref_m else ''
+        # ── TOPIC ────────────────────────────────────────────────────────────
+        topic_block = sec('TOPIC')
+        topic_lines = [l.strip() for l in topic_block.split('\n') if l.strip()]
+        # First non-empty line = topic name; subtitle in parentheses on next line
+        study_topic = topic_lines[0] if topic_lines else ''
+        # Append parenthetical subtitle if present
+        if len(topic_lines) > 1 and topic_lines[1].startswith('('):
+            study_topic += '\n' + topic_lines[1]
 
-    # ─ Section blocks ─────────────────────────────────────────────────────
-    # Split off everything after Key Insight
-    ki_split = re.split(r'\bKey Insight\b', text, maxsplit=1, flags=re.I)
-    body_text   = ki_split[0]
-    ending_text = ki_split[1] if len(ki_split) > 1 else ''
+        # ── ICEBREAKER ───────────────────────────────────────────────────────
+        ice_block = sec('ICEBREAKER')
+        # Title: extract from **"..."** or first quoted text
+        ice_title_m = re.search(
+            r'\*{1,2}["\u201c](.+?)["\u201d].*?\*{0,2}', ice_block)
+        if not ice_title_m:
+            ice_title_m = re.search(r'["\u201c](.+?)["\u201d]', ice_block)
+        icebreaker_title = ice_title_m.group(1).strip() if ice_title_m else study_topic
+        icebreaker_text  = ice_block  # keep full block for display
 
-    # A section heading: short line, starts with a capital, not a known keyword
-    SKIP = re.compile(
-        r'^(Icebreaker|Big Idea|Passage|Key|Action|Finding|\d)', re.I)
-    section_blocks = []
-    current_h, current_b = None, []
-    for line in body_text.split('\n'):
-        stripped = line.strip()
-        if (stripped
-                and len(stripped) < 60
-                and re.match(r'[A-Z]', stripped)
-                and not stripped.endswith('?')
-                and not stripped.endswith('.')
-                and not SKIP.match(stripped)):
-            if current_h is not None:
-                section_blocks.append((current_h, '\n'.join(current_b).strip()))
-            current_h, current_b = stripped, []
-        elif current_h:
-            current_b.append(line)
-    if current_h:
-        section_blocks.append((current_h, '\n'.join(current_b).strip()))
+        # ── BIG IDEA ─────────────────────────────────────────────────────────
+        big_idea = sec('BIG IDEA')
 
-    def split_section(block_text):
-        """Returns (content, question, key_truth) from a section block."""
-        q_lines   = [l.strip() for l in block_text.split('\n') if l.strip().endswith('?')]
-        non_q     = [l for l in block_text.split('\n')
-                     if l.strip() and not l.strip().endswith('?')]
-        content   = '\n'.join(non_q).strip()
-        question  = ' '.join(q_lines)
-        sentences = re.split(r'(?<=[.!])\s+', content)
-        key_truth = sentences[-1].strip() if sentences else ''
-        return content, question, key_truth
+        # ── PASSAGE & KEY TEXT ───────────────────────────────────────────────
+        passage_block = sec('PASSAGE')
+        p_lines = [l.strip() for l in passage_block.split('\n') if l.strip()]
+        passage_name = p_lines[0] if p_lines else ''
 
-    s_titles   = ['', '', '']
-    s_contents = ['', '', '']
-    s_questions= ['', '', '']
-    s_truths   = ['', '', '']
-    for i, (h, b) in enumerate(section_blocks[:3]):
-        s_titles[i]    = h
-        c, q, t        = split_section(b)
-        s_contents[i]  = c
-        s_questions[i] = q
-        s_truths[i]    = t
+        # Key Verse label → grab the next quoted block
+        kv_m = re.search(
+            r'Key Verse[:\s]*\n*["\u201c](.+?)["\u201d]',
+            passage_block, re.S | re.I)
+        if not kv_m:
+            # Fallback: first quoted block in passage section
+            kv_m = re.search(r'["\u201c](.+?)["\u201d]', passage_block, re.S)
+        key_verse = kv_m.group(1).strip() if kv_m else ''
 
-    # ─ Key Insight & Action Step ────────────────────────────────────────────
-    key_insight = between(r'', r'Action Step\b', src=ending_text)
-    action_step = between(r'Action Step\b', r'\Z', src=ending_text)
+        # Reference: parenthesised text after the key verse block
+        ref_m = re.search(
+            r'Key Verse[:\s]*\n*["\u201c].+?["\u201d]\s*\n?\(([^)]+)\)',
+            passage_block, re.S | re.I)
+        if not ref_m:
+            # Fallback: last (Reference ESV) style in passage block
+            ref_m = re.search(r'\(([^)]*\bESV\b[^)]*)\)', passage_block, re.I)
+        if not ref_m:
+            # Old-style dash reference
+            ref_m = re.search(
+                r'["\u201d]\s*[\u2013\u2014\-]+\s*(.+?)(?:\n|$)', passage_block)
+        verse_reference = ref_m.group(1).strip() if ref_m else ''
 
-    # ─ Assemble & return ─────────────────────────────────────────────────────
-    result = {
-        "study_topic":      title,
-        "icebreaker_title": title,
-        "icebreaker_text":  icebreaker,
-        "big_idea":         big_idea,
-        "passage_name":     passage_name,
-        "key_verse":        key_verse,
-        "verse_reference":  verse_reference,
-        "section1_title":   s_titles[0],
-        "section1_content": s_contents[0],
-        "section1_question":s_questions[0],
+        # ── THE LESSON → split into ### SECTION blocks ───────────────────────
+        lesson_block = sec('THE LESSON')
+        sub_sections = re.split(r'###\s+SECTION\s+\d+[:\s]', lesson_block,
+                                flags=re.I)
+        # sub_sections[0] is text before any SECTION header (ignore)
+        lesson_parts = sub_sections[1:4]  # up to 3 sections
+
+        s_titles   = ['', '', '']
+        s_subtitles= ['', '', '']
+        s_contents = ['', '', '']
+        s_questions= ['', '', '']
+        s_truths   = ['', '', '']
+
+        for i, part in enumerate(lesson_parts[:3]):
+            part_lines = part.split('\n')
+
+            # First non-empty line after the ### header = section label
+            # (e.g. "PERSONAL APPLICATION")
+            label_line = ''
+            for pl in part_lines:
+                if pl.strip():
+                    label_line = pl.strip()
+                    break
+            s_titles[i] = label_line
+
+            # Subtitle: **How This Truth Shapes...**
+            subtitle_m = re.search(
+                r'\*{1,2}How This Truth[^*\n]+\*{0,2}', part, re.I)
+            if not subtitle_m:
+                # Any **bold** line that isn't a known label
+                subtitle_m = re.search(
+                    r'^\*{1,2}(?!Proof|DISCUSSION|Key Verse)(.+?)\*{0,2}$',
+                    part, re.MULTILINE | re.I)
+            s_subtitles[i] = clean(subtitle_m.group(0)) if subtitle_m else ''
+
+            # Proof Text → key_truth
+            proof_m = re.search(
+                r'Proof Text[:\s]*\n*["\u201c](.+?)["\u201d]',
+                part, re.S | re.I)
+            s_truths[i] = proof_m.group(1).strip() if proof_m else ''
+
+            # Discussion Questions block (bullet lines under DISCUSSION QUESTIONS)
+            dq_m = re.search(
+                r'DISCUSSION QUESTIONS[^\n]*\n(.+)',
+                part, re.S | re.I)
+            if dq_m:
+                dq_raw = dq_m.group(1)
+                # Grab bullet lines (* text or - text)
+                bullets = re.findall(
+                    r'^[\*\-•]\s*\*{0,2}(.+?)\*{0,2}$',
+                    dq_raw, re.MULTILINE)
+                s_questions[i] = ' '.join(b.strip() for b in bullets)
+
+            # Content: teaching paragraphs — exclude sections after Proof Text
+            # and the DISCUSSION block
+            content_end = re.search(
+                r'\*{0,2}Proof Text[:\s]', part, re.I)
+            content_part = part[:content_end.start()] if content_end else part
+
+            # Remove the section label line, subtitle, and any remaining **bold**
+            # labels; keep normal paragraph text
+            content_lines = []
+            for cl in content_part.split('\n'):
+                cs = cl.strip()
+                if not cs:
+                    continue
+                if cs.upper() == label_line.upper():
+                    continue
+                if re.match(r'^\*{1,2}[A-Z].*\*{0,2}$', cs):
+                    # Looks like a bold label line — skip
+                    continue
+                content_lines.append(cs)
+            s_contents[i] = '\n'.join(content_lines)
+
+        # ── KEY INSIGHT ──────────────────────────────────────────────────────
+        key_insight = sec('KEY INSIGHT')
+
+        # ── ACTION STEP ─────────────────────────────────────────────────────
+        action_raw = sec('ACTION STEP')
+        # Remove the bold title line at the top (e.g. **This Week: "..."**)
+        action_lines = [l for l in action_raw.split('\n')
+                        if not re.match(r'^\*{1,2}This Week', l.strip(), re.I)]
+        action_step = '\n'.join(action_lines).strip()
+
+    else:
+        # ════════════════════════════════════════════════════════════════════
+        # LEGACY / OLD FORMAT fallback
+        # ════════════════════════════════════════════════════════════════════
+        non_empty = [l for l in lines if l.strip()]
+        study_topic = non_empty[0].strip() if non_empty else ''
+        icebreaker_title = study_topic
+        icebreaker_text  = between(r'Icebreaker\b', r'Big Idea\b')
+        big_idea         = between(r'Big Idea\b', r'Passage\b')
+
+        passage_block = between(r'Passage\s*(?:&|and)?\s*Key Text\b',
+                                r'\n[A-Z][^\n]{3,40}\n')
+        passage_lines = passage_block.split('\n')
+        passage_name  = passage_lines[0].strip() if passage_lines else ''
+        verse_m       = re.search(r'["\u201c](.+?)["\u201d]', text)
+        key_verse     = verse_m.group(1).strip() if verse_m else ''
+        ref_m         = re.search(
+            r'["\u201d]\s*[\u2013\u2014\-]+\s*(.+?)(?:\n|$)', text)
+        verse_reference = ref_m.group(1).strip() if ref_m else ''
+
+        ki_split    = re.split(r'\bKey Insight\b', text, maxsplit=1, flags=re.I)
+        body_text   = ki_split[0]
+        ending_text = ki_split[1] if len(ki_split) > 1 else ''
+
+        SKIP = re.compile(
+            r'^(Icebreaker|Big Idea|Passage|Key|Action|Finding|\d)', re.I)
+        section_blocks = []
+        current_h, current_b = None, []
+        for line in body_text.split('\n'):
+            stripped = line.strip()
+            if (stripped
+                    and len(stripped) < 60
+                    and re.match(r'[A-Z]', stripped)
+                    and not stripped.endswith('?')
+                    and not stripped.endswith('.')
+                    and not SKIP.match(stripped)):
+                if current_h is not None:
+                    section_blocks.append(
+                        (current_h, '\n'.join(current_b).strip()))
+                current_h, current_b = stripped, []
+            elif current_h:
+                current_b.append(line)
+        if current_h:
+            section_blocks.append((current_h, '\n'.join(current_b).strip()))
+
+        def split_section(block_text):
+            q_lines = [l.strip() for l in block_text.split('\n')
+                       if l.strip().endswith('?')]
+            non_q   = [l for l in block_text.split('\n')
+                       if l.strip() and not l.strip().endswith('?')]
+            content  = '\n'.join(non_q).strip()
+            question = ' '.join(q_lines)
+            sentences = re.split(r'(?<=[.!])\s+', content)
+            key_truth = sentences[-1].strip() if sentences else ''
+            return content, question, key_truth
+
+        s_titles   = ['', '', '']
+        s_contents = ['', '', '']
+        s_questions= ['', '', '']
+        s_truths   = ['', '', '']
+        for i, (h, b) in enumerate(section_blocks[:3]):
+            s_titles[i] = h
+            c, q, t     = split_section(b)
+            s_contents[i]  = c
+            s_questions[i] = q
+            s_truths[i]    = t
+
+        key_insight = between(r'', r'Action Step\b', src=ending_text)
+        action_step = between(r'Action Step\b', r'\Z', src=ending_text)
+
+    # ── Assemble & return ────────────────────────────────────────────────────
+    return {
+        "study_topic":       study_topic,
+        "icebreaker_title":  icebreaker_title,
+        "icebreaker_text":   icebreaker_text,
+        "big_idea":          big_idea,
+        "passage_name":      passage_name,
+        "key_verse":         key_verse,
+        "verse_reference":   verse_reference,
+        "section1_title":    s_titles[0],
+        "section1_content":  s_contents[0],
+        "section1_question": s_questions[0],
         "section1_key_truth":s_truths[0],
-        "section2_title":   s_titles[1],
-        "section2_content": s_contents[1],
-        "section2_question":s_questions[1],
+        "section2_title":    s_titles[1],
+        "section2_content":  s_contents[1],
+        "section2_question": s_questions[1],
         "section2_key_truth":s_truths[1],
-        "section3_title":   s_titles[2],
-        "section3_content": s_contents[2],
-        "section3_question":s_questions[2],
+        "section3_title":    s_titles[2],
+        "section3_content":  s_contents[2],
+        "section3_question": s_questions[2],
         "section3_key_truth":s_truths[2],
-        "key_insight":      key_insight,
-        "action_step":      action_step,
+        "key_insight":       key_insight,
+        "action_step":       action_step,
     }
-    return result
 
 
 def import_with_gemini(raw_text: str):
@@ -525,13 +722,33 @@ You are a content assistant for a Bible study app. Read the following study guid
   section3_title, section3_content, section3_question, section3_key_truth,
   key_insight, action_step
 
+The document may use one of two formats:
+
+NEW FORMAT (## headings):
+  ## TOPIC → study_topic (first line = topic name, 2nd line in parentheses = subtitle; include both)
+  ## ICEBREAKER → icebreaker_title (quoted title inside **"..."**), icebreaker_text (full block)
+  ## BIG IDEA → big_idea
+  ## PASSAGE & KEY TEXT → passage_name (first line/reference), key_verse (text after **Key Verse:** label, no quotes), verse_reference (parenthesised reference like "Malachi 4:2, ESV")
+  ## THE LESSON → contains ### SECTION 1 / 2 / 3 blocks:
+    - section_title = the label after "SECTION N:" (e.g. "PERSONAL APPLICATION")
+    - section_content = teaching paragraphs only (stop before **Proof Text:**)
+    - section_key_truth = the verse quoted under **Proof Text:** (text only, no reference)
+    - section_question = the bullet-point questions under **DISCUSSION QUESTIONS — Section N**
+  ## KEY INSIGHT → key_insight
+  ## ACTION STEP → action_step (exclude the bold **This Week: "..."** title line)
+
+OLD FORMAT (plain headings):
+  - Title line → study_topic, icebreaker_title
+  - Icebreaker / Big Idea / Passage & Key Text headings
+  - Short capitalized lines = section titles; body text follows
+  - Key Insight / Action Step headings
+
 Rules:
-- section1/2/3_title = the heading of each main section
-- section_content = the teaching paragraphs (NOT the discussion questions)
-- section_question = the discussion question(s) for that section
-- section_key_truth = a 1-2 sentence summary of the section's core truth
-- key_verse = just the verse text, no reference
-- verse_reference = e.g. "John 9:5, ESV"
+- section_content = teaching body paragraphs ONLY (no discussion questions, no proof texts)
+- section_question = all discussion/follow-up questions for that section (joined as one string)
+- section_key_truth = proof text verse OR last key sentence of the section
+- key_verse = verse text only, NO reference citation
+- verse_reference = e.g. "Malachi 4:2, ESV"
 - Return ONLY valid JSON, no markdown fences, no extra text.
 
 Study guide text:
