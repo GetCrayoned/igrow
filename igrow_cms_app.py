@@ -392,6 +392,7 @@ st.markdown("""
 
 # File paths
 CONTENT_FILE = Path("igrow_content.json")
+USER_ANSWERS_FILE = Path("igrow_user_answers.json")
 ADMIN_PASSWORD_HASH = "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"  # Default: "password"
 
 # Helper functions
@@ -512,6 +513,50 @@ def save_content(content):
     with open(CONTENT_FILE, 'w', encoding='utf-8') as f:
         f.write(json_str)
     return push_to_github(json_str)
+
+
+# ── User answer helpers ───────────────────────────────────────────────────────
+def load_user_answers():
+    """Load all user answers from the JSON file."""
+    if USER_ANSWERS_FILE.exists():
+        with open(USER_ANSWERS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
+
+
+def save_user_answers(data):
+    """Persist the full user-answers dict to JSON."""
+    with open(USER_ANSWERS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+
+def get_user_answers(username):
+    """Return the list of saved answer sessions for a given username."""
+    data = load_user_answers()
+    return data.get(username.strip().lower(), [])
+
+
+def save_current_answers(username):
+    """Snapshot the current session's answers and append to the user's history."""
+    content = st.session_state.content
+    session = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "study_topic": content.get("study_topic", ""),
+        "section1_question": content.get("section1_question", ""),
+        "section1_answer": st.session_state.reflections.get("section1", ""),
+        "section2_question": content.get("section2_question", ""),
+        "section2_answer": st.session_state.reflections.get("section2", ""),
+        "section3_question": content.get("section3_question", ""),
+        "section3_answer": st.session_state.reflections.get("section3", ""),
+        "unlikely_person": st.session_state.unlikely_person,
+        "safe_space_ideas": list(st.session_state.safe_space_ideas),
+        "selected_struggles": list(st.session_state.selected_struggles),
+        "commitment": st.session_state.action_commitment,
+    }
+    key = username.strip().lower()
+    data = load_user_answers()
+    data.setdefault(key, []).append(session)
+    save_user_answers(data)
 
 
 # ── Survey helpers ────────────────────────────────────────────────────────────
@@ -764,6 +809,18 @@ if 'survey_submitted' not in st.session_state:
 if 'import_preview' not in st.session_state:
     st.session_state.import_preview = None
 
+if 'user_logged_in' not in st.session_state:
+    st.session_state.user_logged_in = False
+
+if 'current_username' not in st.session_state:
+    st.session_state.current_username = ''
+
+if 'show_user_login' not in st.session_state:
+    st.session_state.show_user_login = False
+
+if 'show_past_answers' not in st.session_state:
+    st.session_state.show_past_answers = False
+
 # Admin login interface
 def show_admin_login():
     st.markdown("""
@@ -790,6 +847,145 @@ def show_admin_login():
             if st.button("Cancel", use_container_width=True):
                 st.session_state.show_login = False
                 st.rerun()
+
+# User login interface
+def show_user_login():
+    st.markdown("""
+    <div class="login-box" style="max-width: 440px; margin: 3rem auto; text-align: center;">
+        <span style="font-size: 2.5rem;">📖</span>
+        <h2 style="color: #6F6354; margin-top: 0.5rem; margin-bottom: 0.25rem;">Sign In</h2>
+        <p style="color: #8A877E; font-size: 0.9rem; margin-bottom: 0;">Enter your name to save and review your answers</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        username = st.text_input(
+            "Your Name / Username",
+            placeholder="e.g. Maria, JohnD …",
+            key="user_login_input"
+        )
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("Sign In ✓", use_container_width=True, type="primary", key="user_signin_confirm"):
+                if username.strip():
+                    st.session_state.user_logged_in = True
+                    st.session_state.current_username = username.strip()
+                    st.session_state.show_user_login = False
+                    st.rerun()
+                else:
+                    st.error("Please enter your name.")
+        with col_b:
+            if st.button("Cancel", use_container_width=True, key="user_login_cancel"):
+                st.session_state.show_user_login = False
+                st.rerun()
+
+
+# Past answers viewer
+def show_past_answers():
+    """Display the current user's past saved answer sessions."""
+    username = st.session_state.current_username
+    sessions = get_user_answers(username)
+
+    st.markdown(f"""
+    <div class="gradient-header-blue">
+        <h2 style="margin-bottom: 0.25rem;">📚 My Past Answers</h2>
+        <p style="opacity: 0.9; margin: 0;">Signed in as <strong>{username}</strong></p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if st.button("← Back to Study", key="back_from_history"):
+        st.session_state.show_past_answers = False
+        st.rerun()
+
+    if not sessions:
+        st.markdown("""
+        <div class="info-box" style="text-align: center; padding: 2rem; margin-top: 1.5rem;">
+            <p style="font-size: 1.1rem; margin: 0;">No saved answers yet.<br>
+            Complete a study and hit <strong>💾 Save My Answers</strong>!</p>
+        </div>
+        """, unsafe_allow_html=True)
+        return
+
+    st.markdown(
+        f"<p style='color:#8A877E; margin-bottom:1rem;'>{len(sessions)} session(s) saved</p>",
+        unsafe_allow_html=True
+    )
+
+    data = load_user_answers()
+    key = username.strip().lower()
+
+    # Show newest first
+    for orig_idx, session in reversed(list(enumerate(sessions))):
+        topic = session.get("study_topic", "Bible Study")
+        ts = session.get("timestamp", "")
+        label = f"📖  {topic}  •  {ts}"
+        is_latest = (orig_idx == len(sessions) - 1)
+
+        with st.expander(label, expanded=is_latest):
+
+            def _qa_row(question, answer):
+                if question:
+                    st.markdown(f"""
+                    <div class="discussion-box" style="margin-bottom:0.5rem;">
+                        <p style="color:#6F6354;font-weight:600;font-size:0.82rem;margin-bottom:0.25rem;">QUESTION</p>
+                        <p style="color:#252628;font-style:italic;margin-bottom:0;">{question}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                if answer:
+                    st.markdown(f"""
+                    <div class="success-box" style="margin-bottom:1rem;">
+                        <p style="color:#065F46;font-weight:600;font-size:0.82rem;margin-bottom:0.25rem;">YOUR ANSWER</p>
+                        <p style="color:#252628;margin-bottom:0;">{answer}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                elif question:
+                    st.markdown(
+                        "<p style='color:#9CA3AF;font-size:0.85rem;margin-bottom:1rem;'><em>(No answer recorded)</em></p>",
+                        unsafe_allow_html=True
+                    )
+
+            _qa_row(session.get("section1_question"), session.get("section1_answer"))
+            _qa_row(session.get("section2_question"), session.get("section2_answer"))
+            _qa_row(session.get("section3_question"), session.get("section3_answer"))
+
+            if session.get("unlikely_person"):
+                st.markdown(f"""
+                <div class="proof-box" style="margin-bottom:0.5rem;">
+                    <p style="color:#6F6354;font-weight:600;font-size:0.82rem;margin-bottom:0.25rem;">PERSON I IDENTIFIED</p>
+                    <p style="color:#252628;margin-bottom:0;">{session['unlikely_person']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+            if session.get("commitment"):
+                st.markdown(f"""
+                <div class="proof-box" style="border-left-color:#7A9B76;margin-bottom:0.5rem;">
+                    <p style="color:#6F6354;font-weight:600;font-size:0.82rem;margin-bottom:0.25rem;">MY COMMITMENT</p>
+                    <p style="color:#252628;margin-bottom:0;">{session['commitment']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+            if session.get("selected_struggles"):
+                st.markdown(
+                    "<p style='font-size:0.82rem;color:#6F6354;font-weight:600;margin-bottom:0.25rem;'>STRUGGLES I IDENTIFIED</p>",
+                    unsafe_allow_html=True
+                )
+                st.markdown("  ".join([f"`{s}`" for s in session["selected_struggles"]]))
+
+            if session.get("safe_space_ideas"):
+                st.markdown(
+                    "<p style='font-size:0.82rem;color:#6F6354;font-weight:600;margin-top:0.5rem;margin-bottom:0.25rem;'>SAFE SPACE IDEAS I CHOSE</p>",
+                    unsafe_allow_html=True
+                )
+                st.markdown("  ".join([f"`{s}`" for s in session["safe_space_ideas"]]))
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🗑️ Delete this entry", key=f"delete_session_{orig_idx}"):
+                data[key].pop(orig_idx)
+                save_user_answers(data)
+                st.success("Entry deleted.")
+                st.rerun()
+
 
 # Admin content editor
 def show_admin_editor():
@@ -1583,7 +1779,7 @@ def section_5_action_step():
         label_visibility="collapsed"
     )
     st.session_state.action_commitment = commitment
-    
+
     if st.session_state.action_commitment:
         st.markdown("""
         <div style="background-color: #7A9B76; color: white; padding: 1rem; border-radius: 0.5rem; margin-top: 1rem;">
@@ -1591,9 +1787,30 @@ def section_5_action_step():
             <p>God is with you as you step out in mercy this week.</p>
         </div>
         """, unsafe_allow_html=True)
-    
+
+    # ── Save My Answers (user login required) ─────────────────────────────────
     st.markdown("<br>", unsafe_allow_html=True)
-    
+    if st.session_state.get("user_logged_in"):
+        if st.session_state.action_commitment:
+            if st.button("💾 Save My Answers", use_container_width=True, type="primary", key="save_answers_btn"):
+                save_current_answers(st.session_state.current_username)
+                st.success(
+                    f"✅ Answers saved for **{st.session_state.current_username}**! "
+                    "Click **My Past Answers** at the top to review them."
+                )
+        else:
+            st.info("✏️ Write your commitment above to unlock **Save My Answers**.")
+    else:
+        st.markdown("""
+        <div style="background-color:#F5EFE0;border:1px dashed #C9A962;
+                    padding:1rem;border-radius:0.5rem;text-align:center;margin-top:0.5rem;">
+            <p style="color:#6F6354;margin:0;">💡 <strong>Sign in</strong> at the top of the page
+            to save your answers and review them later!</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
     st.markdown("""
     <div class="info-box">
         <p style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem;">Remember:</p>
@@ -1607,6 +1824,49 @@ def section_5_action_step():
 
 # Main app logic
 def main():
+    # ── User login / past-answers routing ────────────────────────────────────
+    if st.session_state.get("show_past_answers") and st.session_state.get("user_logged_in"):
+        show_past_answers()
+        return
+
+    if st.session_state.get("show_user_login") and not st.session_state.get("user_logged_in"):
+        show_user_login()
+        return
+
+    # ── User strip (signed-in) or guest banner ────────────────────────────────
+    if st.session_state.get("user_logged_in"):
+        uname = st.session_state.current_username
+        col_u1, col_u2, col_u3 = st.columns([4, 2, 1])
+        with col_u1:
+            st.markdown(
+                f"<p style='color:#6F6354;font-weight:600;margin:0;padding-top:0.4rem;'>"
+                f"👤 Signed in as <strong>{uname}</strong></p>",
+                unsafe_allow_html=True
+            )
+        with col_u2:
+            if st.button("📚 My Past Answers", key="view_past_btn", use_container_width=True):
+                st.session_state.show_past_answers = True
+                st.rerun()
+        with col_u3:
+            if st.button("Sign Out", key="user_signout_btn", use_container_width=True):
+                st.session_state.user_logged_in = False
+                st.session_state.current_username = ''
+                st.rerun()
+        st.markdown("<hr style='margin:0.4rem 0;border-color:#D0CFC9;'>", unsafe_allow_html=True)
+    else:
+        col_b1, col_b2 = st.columns([5, 1])
+        with col_b1:
+            st.markdown(
+                "<p style='color:#8A877E;font-size:0.9rem;margin:0;padding-top:0.4rem;'>"
+                "💡 Sign in to save your answers and view your study history</p>",
+                unsafe_allow_html=True
+            )
+        with col_b2:
+            if st.button("Sign In", key="user_signin_banner", use_container_width=True):
+                st.session_state.show_user_login = True
+                st.rerun()
+        st.markdown("<hr style='margin:0.4rem 0;border-color:#D0CFC9;'>", unsafe_allow_html=True)
+
     # Admin access button (hidden in bottom corner)
     if not st.session_state.logged_in and not st.session_state.show_login:
         # Create a small, subtle button that can be clicked to reveal login
