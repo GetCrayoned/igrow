@@ -21,7 +21,7 @@ import re
 
 # Page configuration
 st.set_page_config(
-    page_title="I-Grow Discipleship Guide",
+    page_title="BANIG Bible Study",
     page_icon="📖",
     layout="wide",
     initial_sidebar_state="collapsed"
